@@ -16,21 +16,36 @@ class Dim:
         self.cats = cats
         self.name = name
 
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, Dim)
+            and self.name == other.name
+            and self.name == other.name
+        )
+
     def __repr__(self) -> str:
-        return f'Dim("{self.name}", cats={len(self.cats)})'
+        return f'Dim("{self.name}", #cats={len(self.cats)})'
 
 
-Intersection = List[Tuple[Dim, Cat]]
+class Intersection:
+    """Wraps the intersection of n dimensions.."""
 
+    def __init__(self, dimcats: Optional[List[Tuple[Dim, Cat]]] = None) -> None:
+        if not dimcats:
+            dimcats = []
+        self.dimcats = dimcats
 
-# ---------------------------------------------------------------------------------------
+    def deepcopy_add_cat(self, dim: Dim, cat: Cat) -> "Intersection":
+        """Deep-copy self then add the new dim-cat pair to the new Intersection."""
+        new = deepcopy(self)
+        new.dimcats.append((dim, cat))
+        return new
 
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Intersection) and self.dimcats == other.dimcats
 
-def deepcopy_add_cat(intersection: Intersection, dim: Dim, cat: Cat) -> Intersection:
-    """Deep-copy then add the new dim-cat pair to the Intersection."""
-    new = deepcopy(intersection)
-    new.append((dim, cat))
-    return new
+    def __repr__(self) -> str:
+        return f"Intersection({self.dimcats})"
 
 
 # ---------------------------------------------------------------------------------------
@@ -56,7 +71,7 @@ class IntersectionMatrix:
             unfinished_intersection: Optional[Intersection] = None,
         ) -> None:
             if not unfinished_intersection:
-                unfinished_intersection = []
+                unfinished_intersection = Intersection()
 
             if not dims_togo:
                 # intersection IS finished
@@ -66,7 +81,7 @@ class IntersectionMatrix:
             for cat in dims_togo[0].cats:
                 _recurse_build(
                     dims_togo[1:],
-                    deepcopy_add_cat(unfinished_intersection, dims_togo[0], cat),
+                    unfinished_intersection.deepcopy_add_cat(dims_togo[0], cat),
                 )
 
         _recurse_build(dims)
