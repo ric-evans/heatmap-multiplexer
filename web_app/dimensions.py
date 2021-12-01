@@ -2,7 +2,6 @@
 
 
 from copy import deepcopy
-from pprint import pprint
 from typing import List, Optional, Tuple, Union
 
 Range = Tuple[float, float]
@@ -100,18 +99,16 @@ class IntersectionMatrix:
             return num
 
         x_range, y_range = range(super_len(x_dims)), range(super_len(y_dims))
-        matrix: List[List[Intersection]] = [[[] for x in x_range] for y in y_range]
+        matrix: List[List[Intersection]] = [
+            [Intersection() for x in x_range] for y in y_range
+        ]
 
         for intersection in IntersectionMatrix._build_list(y_dims + x_dims):
             if x == len(matrix[0]):
                 x = 0
                 y += 1
             matrix[y][x] = intersection
-            print(f"({x},{y}) :")
-            pprint(intersection)
             x += 1
-
-        print(y_dims + x_dims)
 
         if x != len(matrix[0]) and y != len(matrix) - 1:
             raise IntersectionMatrixBuildException(
