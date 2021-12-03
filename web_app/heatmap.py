@@ -16,7 +16,11 @@ class HeatBrick(TypedDict):
     intersection: Dict[str, str]
 
 
-StatsFunc = Callable[[List[float]], float]
+class ZStat(TypedDict):
+    """Wrap a dimension and its statistical function."""
+
+    dim_name: str
+    stats_func: Callable[[List[float]], float]
 
 
 class Heatmap:
@@ -27,7 +31,7 @@ class Heatmap:
         df: pd.DataFrame,
         x_dim_names: List[str],
         y_dim_names: List[str],
-        z_func: StatsFunc = len,  # min, max, average, etc.
+        z_stat: Optional[ZStat] = None,  # Ex: {'Score': min}, {'Time': max}, etc.
         bins: Optional[Dict[str, int]] = None,
     ) -> None:
         if not bins:
@@ -37,13 +41,11 @@ class Heatmap:
         self.y_dims = [Dim.from_pandas_df(y, df, bins.get(y)) for y in y_dim_names]
         matrix = IntersectionMatrix(self.x_dims, self.y_dims)
 
-        self.heatmap = self._build(df, matrix, z_func)
+        self.heatmap = self._build(df, matrix, z_stat)
 
     @staticmethod
     def _build(
-        df: pd.DataFrame,
-        matrix: IntersectionMatrix,
-        z_func: StatsFunc,
+        df: pd.DataFrame, matrix: IntersectionMatrix, z_stat: Optional[ZStat]
     ) -> List[List[HeatBrick]]:
         """Build out the 2D heatmap."""
 
@@ -53,8 +55,16 @@ class Heatmap:
             for dimselect in inter.dimselections:
                 temp = temp.query(dimselect.get_numpy_query())
 
+            if z_stat:
+                # Ex: [0, 1, 3, 2.5, 3] or ['apple', 'lemon', 'lemon']
+                z_series = temp[z_stat["dim_name"]]
+                # apply some function to it, like average or a lambda
+                z = z_stat["stats_func"](z_series)  # pylint:disable=invalid-name
+            else:
+                z = len(df)  # pylint:disable=invalid-name
+
             return {
-                "z": z_func(df),
+                "z": z,
                 "intersection": {
                     ds.dim.name: str(ds.catbin) for ds in inter.dimselections
                 },
