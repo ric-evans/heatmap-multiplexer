@@ -17,11 +17,18 @@ class Dim:
         self.catbins = catbins
         self.name = name
 
+        if all(isinstance(c, pd.Interval) for c in catbins):
+            self.is_numerical = True
+        elif all(isinstance(c, str) for c in catbins):
+            self.is_numerical = False
+        else:
+            raise ValueError(f"Dim has invalid catbin type(s): {name=}, {catbins=}")
+
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Dim)
             and self.name == other.name
-            and self.name == other.name
+            and self.catbins == other.catbins
         )
 
     def __repr__(self) -> str:
@@ -62,6 +69,15 @@ class DimSelection:
             and self.dim == other.dim
             and self.catbin == other.catbin
         )
+
+    def get_numpy_query(self) -> str:
+        if self.dim.is_numerical:
+            return (
+                f"{self.dim} >= {self.catbin.incl_low} and "  # type: ignore[union-attr]
+                f"{self.dim} < {self.catbin.excl_high}"
+            )
+
+        return f"{self.dim} == {self.catbin}"
 
 
 class Intersection:

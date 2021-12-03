@@ -13,6 +13,7 @@ class HeatBrick(TypedDict):
     """Wrap a single Heatmap datum/element/brick."""
 
     z: float
+    intersection: Dict[str, str]
 
 
 StatsFunc = Callable[[List[float]], float]
@@ -24,8 +25,8 @@ class Heatmap:
     def __init__(
         self,
         csv_path: str,
-        x_dims: List[str],
-        y_dims: List[str],
+        x_dim_names: List[str],
+        y_dim_names: List[str],
         z_func: StatsFunc = len,  # min, max, average, etc.
         bins: Optional[Dict[str, int]] = None,
     ) -> None:
@@ -33,10 +34,11 @@ class Heatmap:
             bins = {}
 
         df: pd.DataFrame = pd.read_csv(csv_path)
-        matrix = IntersectionMatrix(
-            [Dim.from_pandas_df(x, df, bins.get(x)) for x in x_dims],
-            [Dim.from_pandas_df(y, df, bins.get(y)) for y in y_dims],
-        )
+
+        self.x_dims = [Dim.from_pandas_df(x, df, bins.get(x)) for x in x_dim_names]
+        self.y_dims = [Dim.from_pandas_df(y, df, bins.get(y)) for y in y_dim_names]
+        matrix = IntersectionMatrix(self.x_dims, self.y_dims)
+
         self.heatmap = self._build(df, matrix, z_func)
 
     @staticmethod
@@ -51,22 +53,14 @@ class Heatmap:
             temp = deepcopy(df)
 
             for dimselect in inter.dimselections:
-                # Categorical Dimension
-                if isinstance(dimselect.catbin, str):
-                    temp = temp.query(f"{dimselect.dim} == {dimselect.catbin}")
-                # Numerical Dimension
-                elif isinstance(dimselect.catbin, pd.Interval):
-                    temp = temp.query(
-                        f"{dimselect.dim} >= {dimselect.catbin.incl_low} and "
-                        f"{dimselect.dim} < {dimselect.catbin.excl_high}"
-                    )
-                # Error!
-                else:
-                    raise ValueError(
-                        f"DimSelection has invalid catbin type: {dimselect.dim=}, {dimselect.catbin=}"
-                    )
+                temp = temp.query(dimselect.get_numpy_query())
 
-            return {"z": z_func(df)}
+            return {
+                "z": z_func(df),
+                "intersection": {
+                    ds.dim.name: str(ds.catbin) for ds in inter.dimselections
+                },
+            }
 
         return [
             [brick_it(x_inter) for x_inter in matrix.matrix[y]]
