@@ -4,7 +4,15 @@
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 
-Range = Tuple[float, float]
+
+class Range:
+    """Encapsulate a range."""
+
+    def __init__(self, incl_low: float, excl_high: float) -> None:
+        self.incl_low = incl_low
+        self.excl_high = excl_high
+
+
 Cat = Union[str, Range]
 
 
