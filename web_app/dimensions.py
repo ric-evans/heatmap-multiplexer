@@ -2,25 +2,19 @@
 
 
 from copy import deepcopy
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
+import numpy as np  # type: ignore[import]
+import pandas as pd  # type: ignore[import]
 
-class Range:
-    """Encapsulate a range."""
-
-    def __init__(self, incl_low: float, excl_high: float) -> None:
-        self.incl_low = incl_low
-        self.excl_high = excl_high
-
-
-Cat = Union[str, Range]
+CatBin = Union[str, pd.Interval]
 
 
 class Dim:
     """Wraps a single dimension's metadata."""
 
-    def __init__(self, name: str, cats: List[Cat]) -> None:
-        self.cats = cats
+    def __init__(self, name: str, catbins: List[CatBin]) -> None:
+        self.catbins = catbins
         self.name = name
 
     def __eq__(self, other: object) -> bool:
@@ -31,28 +25,67 @@ class Dim:
         )
 
     def __repr__(self) -> str:
-        return f'Dim("{self.name}", #cats={len(self.cats)})'
+        return f'Dim("{self.name}", #catbins={len(self.catbins)})'
+
+    @staticmethod
+    def from_pandas_df(
+        name: str, df: pd.DataFrame, num_bins: Optional[int] = None
+    ) -> "Dim":
+        """Factory from a pandas dataframe."""
+        values = sorted(set(df[name].tolist()))  # get a sorted unique list
+
+        if isinstance(values[0], (float, int)):
+            if not num_bins:
+                # use Sturges’ Rule
+                num_bins = int(np.ceil(np.log2(len(df[name])) + 1))
+            catbins = pd.cut(
+                np.linspace(min(values), max(values), num=num_bins),
+                num_bins,
+                include_lowest=True,
+            )
+        else:
+            catbins = values
+
+        return Dim(name, catbins)
+
+
+class DimSelection:
+    """A pairing of a Dim and a category/bin."""
+
+    def __init__(self, dim: Dim, catbin: CatBin) -> None:
+        self.dim = dim
+        self.catbin = catbin
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, DimSelection)
+            and self.dim == other.dim
+            and self.catbin == other.catbin
+        )
 
 
 class Intersection:
     """Wraps the intersection of n dimensions.."""
 
-    def __init__(self, dimcats: Optional[List[Tuple[Dim, Cat]]] = None) -> None:
-        if not dimcats:
-            dimcats = []
-        self.dimcats = dimcats
+    def __init__(self, dimselections: Optional[List[DimSelection]] = None) -> None:
+        if not dimselections:
+            dimselections = []
+        self.dimselections = dimselections
 
-    def deepcopy_add_cat(self, dim: Dim, cat: Cat) -> "Intersection":
-        """Deep-copy self then add the new dim-cat pair to the new Intersection."""
+    def deepcopy_add_dimselection(self, dimselection: DimSelection) -> "Intersection":
+        """Deep-copy self then add the new DimSelection to a new Intersection."""
         new = deepcopy(self)
-        new.dimcats.append((dim, cat))
+        new.dimselections.append(dimselection)
         return new
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, Intersection) and self.dimcats == other.dimcats
+        return (
+            isinstance(other, Intersection)
+            and self.dimselections == other.dimselections
+        )
 
     def __repr__(self) -> str:
-        return f"Intersection({self.dimcats})"
+        return f"Intersection({self.dimselections})"
 
 
 # ---------------------------------------------------------------------------------------
@@ -85,10 +118,12 @@ class IntersectionMatrix:
                 the_list.append(unfinished_intersection)
                 return
 
-            for cat in dims_togo[0].cats:
+            for catbin in dims_togo[0].catbins:
                 _recurse_build(
                     dims_togo[1:],
-                    unfinished_intersection.deepcopy_add_cat(dims_togo[0], cat),
+                    unfinished_intersection.deepcopy_add_dimselection(
+                        DimSelection(dims_togo[0], catbin)
+                    ),
                 )
 
         _recurse_build(dims)
@@ -103,7 +138,7 @@ class IntersectionMatrix:
         def super_len(dims: List[Dim]) -> int:
             num = 1
             for dim in dims:
-                num *= len(dim.cats)
+                num *= len(dim.catbins)
             return num
 
         x_range, y_range = range(super_len(x_dims)), range(super_len(y_dims))
