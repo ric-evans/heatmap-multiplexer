@@ -24,7 +24,7 @@ class Heatmap:
 
     def __init__(
         self,
-        csv_path: str,
+        df: pd.DataFrame,
         x_dim_names: List[str],
         y_dim_names: List[str],
         z_func: StatsFunc = len,  # min, max, average, etc.
@@ -32,8 +32,6 @@ class Heatmap:
     ) -> None:
         if not bins:
             bins = {}
-
-        df: pd.DataFrame = pd.read_csv(csv_path)
 
         self.x_dims = [Dim.from_pandas_df(x, df, bins.get(x)) for x in x_dim_names]
         self.y_dims = [Dim.from_pandas_df(y, df, bins.get(y)) for y in y_dim_names]
