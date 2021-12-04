@@ -1,6 +1,7 @@
 """Handle Heatmap building."""
 
 
+import math
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, TypedDict
 
@@ -12,7 +13,7 @@ from .dimensions import Dim, Intersection, IntersectionMatrix
 class HeatBrick(TypedDict):
     """Wrap a single Heatmap datum/element/brick."""
 
-    z: float
+    z: Optional[float]
     intersection: Dict[str, str]
 
 
@@ -48,20 +49,29 @@ class Heatmap:
         df: pd.DataFrame, matrix: IntersectionMatrix, z_stat: Optional[ZStat]
     ) -> List[List[HeatBrick]]:
         """Build out the 2D heatmap."""
+        # pylint:disable=invalid-name
 
         def brick_it(inter: Intersection) -> HeatBrick:
             temp = deepcopy(df)
 
             for dimselect in inter.dimselections:
-                temp = temp.query(dimselect.get_numpy_query())
+                query = dimselect.get_pandas_query()
+                print(query)
+                temp = temp.query(query)
 
+            z = None
             if z_stat:
                 # Ex: [0, 1, 3, 2.5, 3] or ['apple', 'lemon', 'lemon']
-                z_series = temp[z_stat["dim_name"]]
-                # apply some function to it, like average or a lambda
-                z = z_stat["stats_func"](z_series)  # pylint:disable=invalid-name
+                z_list = list(temp[z_stat["dim_name"]])
+                print(z_list)
+                if z_list:
+                    # apply some function to it, like average or a lambda
+                    z = z_stat["stats_func"](z_list)
+                    if math.isnan(z):
+                        z = None
             else:
-                z = len(df)  # pylint:disable=invalid-name
+                if len(temp):  # Does length=0 make sense here? Maybe, but leave as None
+                    z = len(temp)
 
             return {
                 "z": z,

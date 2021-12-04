@@ -1,8 +1,9 @@
 """Contains utilities for handling dimensions."""
 
 
+import math
 from copy import deepcopy
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import numpy as np  # type: ignore[import]
 import pandas as pd  # type: ignore[import]
@@ -39,20 +40,31 @@ class Dim:
         name: str, df: pd.DataFrame, num_bins: Optional[int] = None
     ) -> "Dim":
         """Factory from a pandas dataframe."""
-        values = sorted(set(df[name].tolist()))  # get a sorted unique list
 
+        def is_nullish(val: Any) -> bool:
+            if isinstance(val, str):
+                return not bool(val) or str.isspace(val)
+            if isinstance(val, float):
+                return math.isnan(val)
+            return False
+
+        # get a sorted unique list w/o nan values
+        values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
+        print(values)
         if isinstance(values[0], (float, int)):
             if not num_bins:
                 # use Sturges’ Rule
                 num_bins = int(np.ceil(np.log2(len(df[name])) + 1))
-            catbins = pd.cut(
-                np.linspace(min(values), max(values), num=num_bins),
-                num_bins,
-                include_lowest=True,
+            catbins = list(
+                pd.cut(
+                    np.linspace(min(values), max(values), num=num_bins),
+                    num_bins,
+                    include_lowest=True,
+                )
             )
         else:
             catbins = values
-
+        print(catbins)
         return Dim(name, catbins)
 
 
@@ -70,14 +82,15 @@ class DimSelection:
             and self.catbin == other.catbin
         )
 
-    def get_numpy_query(self) -> str:
+    def get_pandas_query(self) -> str:
+        """Get the pandas-style query string."""
         if self.dim.is_numerical:
             return (
-                f"{self.dim} >= {self.catbin.incl_low} and "  # type: ignore[union-attr]
-                f"{self.dim} < {self.catbin.excl_high}"
+                f"{self.dim.name} > {self.catbin.left} and "  # type: ignore[union-attr]
+                f"{self.dim.name} <= {self.catbin.right}"
             )
 
-        return f"{self.dim} == {self.catbin}"
+        return f"{self.dim.name} == '{self.catbin}'"
 
 
 class Intersection:
