@@ -15,43 +15,46 @@ from .config import app
 NDIMS = 3
 
 
-def make_dim_control(num_id: int, xy_str: str) -> dbc.Col:
+def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
-    width = 410
+    width = "37.5em"
 
-    return dbc.Col(
-        style={"margin-top": "4em"},
+    return dbc.Row(
+        style={"margin-top": "7rem"},
         children=[
-            daq.Slider(
-                id=f"bin-slider-{xy_str.lower()}-{num_id}",
-                min=1,
-                max=10,
-                value=5,
-                handleLabel={"showCurrentValue": True, "label": "BINS"},
-                step=1,
-                size=width,
-            ),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        children=dcc.Dropdown(
-                            style={"width": width},
-                            id=f"dropdown-{xy_str.lower()}-{num_id}",
-                            placeholder=f"Select{' Additional' if num_id else ''}"
-                            f" {xy_str.upper()} Dimension",
-                            clearable=True,
-                        ),
+            dbc.Col(
+                children=[
+                    daq.Slider(
+                        id=f"bin-slider-{xy_str.lower()}-{num_id}",
+                        min=1,
+                        max=10,
+                        value=5,
+                        handleLabel={
+                            "showCurrentValue": True,
+                            "label": "BINS",
+                            "style": {"width": "5rem"},
+                        },
+                        step=1,
+                        size=width,
                     ),
-                    dbc.Col(
-                        # width=2,
-                        align="start",
-                        children=daq.BooleanSwitch(
-                            style={"width": 55},
-                            id=f"hide-switch-{xy_str.lower()}-{num_id}",
-                            on=True,
-                        ),
+                    dcc.Dropdown(
+                        style={"width": width},
+                        id=f"dropdown-{xy_str.lower()}-{num_id}",
+                        placeholder=f"Select{' Additional' if num_id else ''}"
+                        f" {xy_str.upper()} Dimension",
+                        clearable=True,
                     ),
                 ]
+            ),
+            dbc.Col(
+                align="start",
+                children=daq.BooleanSwitch(
+                    style={"width": 55},
+                    id=f"hide-switch-{xy_str.lower()}-{num_id}",
+                    on=True,
+                    label={"label": "Visible", "style": {"margin-bottom": 0}},
+                    labelPosition="top",
+                ),
             ),
         ],
     )
@@ -72,16 +75,14 @@ def layout() -> None:
                 children=[
                     dbc.Col(
                         # width=5,
-                        children=[
-                            dbc.Row(make_dim_control(i, "Y")) for i in range(NDIMS)
-                        ],
+                        children=[html.Div("Y Dimensions")]
+                        + [dbc.Row(make_dim_control(i, "Y")) for i in range(NDIMS)],
                     ),
                     # html.Div(style={"width": "25px"}),
                     dbc.Col(
                         # width=5,
-                        children=[
-                            dbc.Row(make_dim_control(i, "X")) for i in range(NDIMS)
-                        ],
+                        children=[html.Div("X Dimensions")]
+                        + [dbc.Row(make_dim_control(i, "X")) for i in range(NDIMS)],
                     ),
                 ],
             ),
