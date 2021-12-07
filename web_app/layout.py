@@ -1,9 +1,10 @@
 """Dash HTML-ish layout."""
 
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
+import dash_daq as daq
 import plotly.graph_objects as go  # type: ignore[import]
 from dash import dcc  # type: ignore
 from dash import html
@@ -12,6 +13,48 @@ from dash.dependencies import Input, Output, State  # type: ignore
 from .config import app
 
 NDIMS = 3
+
+
+def make_dim_control(num_id: int, xy_str: str) -> dbc.Col:
+    """Return a control box for managing/selecting a dimension."""
+    width = 410
+
+    return dbc.Col(
+        style={"margin-top": "4em"},
+        children=[
+            daq.Slider(
+                id=f"bin-slider-{xy_str.lower()}-{num_id}",
+                min=1,
+                max=10,
+                value=5,
+                handleLabel={"showCurrentValue": True, "label": "BINS"},
+                step=1,
+                size=width,
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        children=dcc.Dropdown(
+                            style={"width": width},
+                            id=f"dropdown-{xy_str.lower()}-{num_id}",
+                            placeholder=f"Select{' Additional' if num_id else ''}"
+                            f" {xy_str.upper()} Dimension",
+                            clearable=True,
+                        ),
+                    ),
+                    dbc.Col(
+                        # width=2,
+                        align="start",
+                        children=daq.BooleanSwitch(
+                            style={"width": 55},
+                            id=f"hide-switch-{xy_str.lower()}-{num_id}",
+                            on=True,
+                        ),
+                    ),
+                ]
+            ),
+        ],
+    )
 
 
 def layout() -> None:
@@ -25,30 +68,20 @@ def layout() -> None:
             dcc.Graph(id="heatmap-parent"),
             html.H4("Select Dimensions"),
             dbc.Row(
+                style={"margin-left": "2em", "margin-right": "2em"},
                 children=[
                     dbc.Col(
+                        # width=5,
                         children=[
-                            dbc.Row(
-                                dcc.Dropdown(
-                                    id=f"dropdown-y-{i}",
-                                    placeholder=f"Select{' Additional' if i else ''} Y Dimension",
-                                    clearable=True,
-                                )
-                            )
-                            for i in range(NDIMS)
-                        ]
+                            dbc.Row(make_dim_control(i, "Y")) for i in range(NDIMS)
+                        ],
                     ),
+                    # html.Div(style={"width": "25px"}),
                     dbc.Col(
+                        # width=5,
                         children=[
-                            dbc.Row(
-                                dcc.Dropdown(
-                                    id=f"dropdown-x-{i}",
-                                    placeholder=f"Select{' Additional' if i else ''} X Dimension",
-                                    clearable=True,
-                                )
-                            )
-                            for i in range(NDIMS)
-                        ]
+                            dbc.Row(make_dim_control(i, "X")) for i in range(NDIMS)
+                        ],
                     ),
                 ],
             ),
@@ -58,13 +91,15 @@ def layout() -> None:
                 id="wbs-upload-xlsx",
                 children=html.Div(["Drag and Drop or ", html.A("Select File")]),
                 style={
-                    "width": "100%",
+                    "width": "94%",
                     "height": "5rem",
                     "lineHeight": "5rem",
                     "borderWidth": "1px",
                     "borderStyle": "dashed",
                     "borderRadius": "5px",
                     "textAlign": "center",
+                    "margin-left": "2em",
+                    "margin-right": "2em",
                 },
                 # Allow multiple files to be uploaded
                 multiple=False,
