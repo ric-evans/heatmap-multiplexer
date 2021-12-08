@@ -1,0 +1,11 @@
+age,race,sex,score,fav_food
+22, black, M, 153, pizza
+35, white, M, 52.3, pizza
+22, asian, F, 10.3, burger
+55, asian, M, 45.6, burger
+25, black, F, 148.3, burger
+, white, M, 10.5, pizza
+56, asian, M, 0.0, pizza
+30, native, F, 5.5,
+42, native, M, , pizza
+25, native, , 11.11, quinoa

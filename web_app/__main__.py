@@ -35,7 +35,7 @@ def main(debug: bool) -> None:
 if __name__ == "__main__":
     # Parse Args
     parser = argparse.ArgumentParser()
-    parser.add_argument("-l", "--log", default="INFO", help="the output logging level")
+    parser.add_argument("-l", "--log", default="DEBUG", help="the output logging level")
     parser.add_argument("--debug", default=False, action="store_true")
     args = parser.parse_args()
 

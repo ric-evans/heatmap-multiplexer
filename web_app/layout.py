@@ -1,21 +1,23 @@
 """Dash HTML-ish layout."""
 
+import base64
 import logging
 import statistics as st
 from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, Union, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
-import pandas as pd
+import pandas as pd  # type: ignore[import]
 import plotly.graph_objects as go  # type: ignore[import]
-from dash import dcc, html, no_update  # type: ignore
+from dash import callback_context, dcc, html, no_update  # type: ignore
 from dash.dependencies import Input, Output, State  # type: ignore
 
 from . import dimensions, heatmap
 from .config import app
 
-CSV = "./tests/data.csv"
+CSV = "./used-data.csv"
+CSV_BACKUP = "./used-data-bkp.csv"
 
 NDIMS = 3
 
@@ -28,6 +30,23 @@ MEDIAN = 5
 MODE = 6
 MEAN = 7
 STD_DEV = 8
+
+
+def triggered() -> str:
+    """Return the component that triggered the callback.
+
+    https://dash.plotly.com/advanced-callbacks
+    """
+    trig = callback_context.triggered[0]["prop_id"]
+    return cast(str, trig)
+
+
+def get_csv_df() -> pd.DataFrame:
+    """Read the csv and return the DataFrame."""
+    try:
+        return pd.read_csv(CSV, skipinitialspace=True)
+    except FileNotFoundError:
+        return pd.read_csv(CSV_BACKUP, skipinitialspace=True)
 
 
 def get_zstat_func(stat_value: int) -> heatmap.StatFunc:
@@ -53,7 +72,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                 children=[
                     daq.Slider(
                         id=f"bin-slider-{xy_str.lower()}-{num_id}",
-                        min=1,
+                        min=2,  # the bin defaulting algo is only defined >=2
                         max=10,
                         value=0,
                         handleLabel={
@@ -280,21 +299,24 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
     try:
         base64_file = contents.split(",")[1]
+        decrypted = base64.b64decode(base64_file).decode("utf-8")
+        with open(CSV, "w") as f:
+            f.write(decrypted)
     except IndexError:
         pass
 
-    dimensions = ["aaa", "bbb", "ccc"]
-    logging.info(f"Dimensions Available ({len(dimensions)}): {dimensions}")
+    df = get_csv_df()
+    logging.info(f"Dimensions Available ({len(df.columns)}): {df.columns}")
 
-    options_list = [
+    options = [
         {
             "label": dim,
             "value": dim,
         }
-        for dim in dimensions
+        for dim in df.columns
     ]
 
-    return [options_list] * ((NDIMS * 2) + 1)
+    return [options] * ((NDIMS * 2) + 1)
 
 
 @app.callback(  # type: ignore[misc]
@@ -320,6 +342,7 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
 )
 def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
+
     args = list(args_tuple)
     xys: List[str] = [a if a else "" for a in args[: NDIMS * 2]]  # type: ignore[misc]
     args = args[NDIMS * 2 :]
@@ -348,41 +371,69 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         bins: int
         is_numerical: bool
 
+    def log_dims(
+        dim_ctrls: List[DimControls],
+        header: str,
+        zipped_dims: Optional[List[DimControls]] = None,
+    ) -> None:
+        if zipped_dims:
+            assert len(dim_ctrls) == len(zipped_dims)
+        for i, dim_ctrl in enumerate(dim_ctrls):
+            log_name = (
+                "<no-update>"
+                if type(dim_ctrl["name"]) == type(no_update)
+                else f"\"{dim_ctrl['name']}\""
+            )
+            logging.info(f"{header}: {log_name}")
+            # logging.info(f"{dim_ctrl}")
+            for key, val in dim_ctrl.items():
+                logging.debug(f"{key}:{val}")
+            if zipped_dims:
+                logging.debug(f"- - - -")
+                for key, val in zipped_dims[i].items():
+                    logging.debug(f"{key}:{val}")
+
     def do_include_dim(dim_ctrl: DimControls) -> bool:
         return bool(dim_ctrl["name"] and dim_ctrl["on"])
 
-    def make_dim_controls(
-        dim_names: List[str], ons: List[bool], bins: List[int]
+    def originals_and_incoming(
+        dim_names: List[str], ons: List[bool], bins: List[int], is_x: bool
     ) -> Tuple[List[DimControls], List[DimControls]]:
+        def do_reset_bin(i: int) -> bool:
+            return bool(triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value")
+
         originals: List[DimControls] = [
-            {"name": o[0], "on": o[1], "bins": o[2]} for o in zip(dim_names, ons, bins)
+            {"name": o[0], "on": o[1], "bins": 0 if do_reset_bin(i) else o[2]}
+            for i, o in enumerate(zip(dim_names, ons, bins))
         ]
-        return [d for d in deepcopy(originals) if do_include_dim(d)], originals
+        return originals, [d for d in deepcopy(originals) if do_include_dim(d)]
 
     # zip & clear each xdims/ydims for ons
-    x_dims, x_dims_original = make_dim_controls(
+    x_originals, x_incoming = originals_and_incoming(
         [a for i, a in enumerate(xys) if i % 2 == 0],
         [a for i, a in enumerate(xy_ons) if i % 2 == 0],
         [a for i, a in enumerate(xy_bins) if i % 2 == 0],
+        True,
     )
-    logging.info(f"Original Selected X-Dimensions: {x_dims_original}")
-    logging.info(f"Post-Filtered Selected X-Dimensions: {x_dims}")
-    y_dims, y_dims_original = make_dim_controls(
+    log_dims(x_originals, "Original Selected X-Dimensions")
+    log_dims(x_incoming, "Post-Filtered Selected X-Dimensions")
+    y_originals, y_incoming = originals_and_incoming(
         [a for i, a in enumerate(xys) if i % 2 != 0],
         [a for i, a in enumerate(xy_ons) if i % 2 != 0],
         [a for i, a in enumerate(xy_bins) if i % 2 != 0],
+        False,
     )
-    logging.info(f"Original Selected Y-Dimensions: {y_dims_original}")
-    logging.info(f"Post-Filtered Selected Y-Dimensions: {y_dims}")
+    log_dims(y_originals, "Original Selected Y-Dimensions")
+    log_dims(y_incoming, "Post-Filtered Selected Y-Dimensions")
 
     # # DATA TIME # #
 
     hmap = heatmap.Heatmap(
-        pd.read_csv(CSV, skipinitialspace=True),
-        [d["name"] for d in x_dims],
-        [d["name"] for d in y_dims],
+        get_csv_df(),
+        [d["name"] for d in x_incoming],
+        [d["name"] for d in y_incoming],
         z_stat=z_stat,
-        bins={d["name"]: d["bins"] for d in x_dims + y_dims if d["bins"]},
+        bins={d["name"]: d["bins"] for d in x_incoming + y_incoming if d["bins"]},
     )
 
     # # Transform Heatmap for Front-End # #
@@ -393,35 +444,34 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         i = -1
         for dim_ctrl in dims_original:
             if not do_include_dim(dim_ctrl):
-                yield {
-                    "name": no_update,
-                    "on": no_update,
-                    "bins": no_update,
-                    "is_numerical": no_update,
-                }
+                if not dim_ctrl["name"]:
+                    yield {
+                        "name": no_update,
+                        "on": True,
+                        "bins": 0,
+                        "is_numerical": no_update,
+                    }
+                elif not dim_ctrl["bins"]:
+                    yield {
+                        "name": no_update,
+                        "on": no_update,
+                        "bins": no_update,
+                        "is_numerical": no_update,
+                    }
                 continue
             i += 1
-            if dim_ctrl["bins"] == len(dim_heatmap[i].catbins):
-                yield {
-                    "name": no_update,
-                    "on": no_update,
-                    "bins": no_update,
-                    "is_numerical": dim_heatmap[i].is_numerical,
-                }
-            else:
-                yield {
-                    "name": no_update,
-                    "on": no_update,
-                    "bins": len(dim_heatmap[i].catbins),
-                    "is_numerical": dim_heatmap[i].is_numerical,
-                }
+            yield {
+                "name": no_update,
+                "on": no_update,
+                # always return bins b/c might be overridden
+                "bins": len(dim_heatmap[i].catbins),
+                "is_numerical": dim_heatmap[i].is_numerical,
+            }
 
-    x_outgoing = list(outgoing(x_dims_original, hmap.x_dims))
-    logging.info(f"Outgoing X-Dimensions: {list(zip(x_outgoing, x_dims_original))}")
-    y_outgoing = list(outgoing(y_dims_original, hmap.y_dims))
-    logging.info(f"Outgoing Y-Dimensions: {list(zip(y_outgoing, y_dims_original))}")
-    assert len(x_outgoing) == len(x_dims_original)
-    assert len(y_outgoing) == len(y_dims_original)
+    x_outgoing = list(outgoing(x_originals, hmap.x_dims))
+    log_dims(x_outgoing, "Outgoing X-Dimensions (vs Originals)", x_originals)
+    y_outgoing = list(outgoing(y_originals, hmap.y_dims))
+    log_dims(y_outgoing, "Outgoing Y-Dimensions (vs Originals)", y_originals)
 
     fig = go.Figure(
         data=go.Heatmap(

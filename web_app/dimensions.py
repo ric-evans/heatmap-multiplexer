@@ -90,7 +90,7 @@ class DimSelection:
                 f"{self.dim.name} <= {self.catbin.right}"
             )
 
-        return f"{self.dim.name} == '{self.catbin}'"
+        return f'{self.dim.name} == "{self.catbin}"'
 
 
 class Intersection:
