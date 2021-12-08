@@ -1,7 +1,7 @@
 """Dash HTML-ish layout."""
 
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
@@ -286,21 +286,46 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
         Input(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "value")
         for i in range(NDIMS * 2)
     ]
-    + [Input("dropdown-color", "value"), Input("color-stats-select-radios", "value")],
+    + [Input("dropdown-color", "value"), Input("color-stats-select-radios", "value")]
+    + [
+        Input(f"hide-switch-{'x' if i%2==0 else 'y'}-{i//2}", "on")
+        for i in range(NDIMS * 2)
+    ],
     # [State("url", "pathname")],
 )
-def make_heatmap(*args: str) -> go.Figure:
+def make_heatmap(*args_tuple: Union[str, bool, None]) -> go.Figure:
     """Serve up the heatmap wrapped in a go.Figure instance."""
-    xdims = [a for i, a in enumerate(args[: NDIMS * 2]) if i % 2 == 0]
+    args = list(args_tuple)
+    xys: List[Optional[str]] = args[: NDIMS * 2]  # type: ignore[assignment]
+    args = args[NDIMS * 2 :]
+    xdims = [a for i, a in enumerate(xys) if i % 2 == 0]
     logging.info(f"Selected X-Dimensions: {xdims}")
-    ydims = [a for i, a in enumerate(args[: NDIMS * 2]) if i % 2 != 0]
+    ydims = [a for i, a in enumerate(xys) if i % 2 != 0]
     logging.info(f"Selected Y-Dimensions: {ydims}")
 
-    zdim = args[(NDIMS * 2)]
+    zdim = args.pop(0)
     logging.info(f"Selected Z-Dimension: {zdim}")
 
-    zstat = args[(NDIMS * 2) + 1]
+    zstat = args.pop(0)
     logging.info(f"Selected Z-Dimension Statistic: {zstat}")
+
+    xy_ons: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
+    args = args[NDIMS * 2 :]
+    x_ons = [a for i, a in enumerate(xy_ons) if i % 2 == 0]
+    logging.info(f"On/Off X-Dimensions: {xdims}")
+    y_ons: List[bool] = [a for i, a in enumerate(xy_ons) if i % 2 != 0]
+    logging.info(f"On/Off Y-Dimensions: {ydims}")
+
+    def on_off_it(dims: List[Optional[str]], ons: List[bool]) -> Iterator[str]:
+        for dim, is_on in zip(dims, ons):
+            if is_on and dim:
+                yield dim
+
+    # zip & clear each xdims/ydims for ons
+    xdims = list(on_off_it(xdims, x_ons))
+    logging.info(f"Post-Filtered Selected X-Dimensions: {xdims}")
+    ydims = list(on_off_it(ydims, y_ons))
+    logging.info(f"Post-Filtered Selected Y-Dimensions: {ydims}")
 
     return go.Figure(
         data=go.Heatmap(
