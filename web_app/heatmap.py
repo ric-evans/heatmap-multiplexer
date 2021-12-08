@@ -77,9 +77,7 @@ class Heatmap:
 
             return {
                 "z": z,
-                "intersection": {
-                    ds.dim.name: str(ds.catbin) for ds in inter.dimselections
-                },
+                "intersection": {ds.dim.name: ds.catbin for ds in inter.dimselections},
             }
 
         return [

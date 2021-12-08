@@ -118,9 +118,12 @@ def layout() -> None:
     # Layout
     app.layout = html.Div(
         children=[
-            html.H1("Heatmap Multiplexer"),
+            html.H1("Heatmap Multiplexer", style={"margin-bottom": 0}),
             dcc.Loading(
-                dcc.Graph(id="heatmap-parent"),
+                dcc.Graph(
+                    id="heatmap-parent",
+                    style={"height": "70rem"},
+                ),
                 fullscreen=True,
                 style={"background": "rgba(255,255,255,0.5)"},  # float atop all
                 type="graph",
@@ -440,8 +443,9 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
 
     # # DATA TIME # #
 
+    df = get_csv_df()
     hmap = heatmap.Heatmap(
-        get_csv_df(),
+        df,
         [d["name"] for d in x_incoming],
         [d["name"] for d in y_incoming],
         z_stat=z_stat,
@@ -485,16 +489,31 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     y_outgoing = list(outgoing(y_originals, hmap.y_dims))
     log_dims(y_outgoing, "Outgoing Y-Dimensions (vs Originals)", y_originals)
 
+    xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
+    ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
+
+    def make_hover(brick: heatmap.HeatBrick) -> str:
+        string = f"{brick['z']} <br>"
+        for (key, val), low in zip(brick["intersection"].items(), ys_bin0 + xs_bin0):
+            #  (left, right]
+            print(low)
+            if isinstance(val, pd.Interval):
+                bracket, left = "(", val.left
+                if val == low:
+                    bracket, left = "[", df[key].min()
+                string += f"{key}: {bracket}{left:.2f}, {val.right:.2f}] <br>"
+            else:
+                string += f"{key}: {val} <br>"
+        return string
+
     fig = go.Figure(
         data=go.Heatmap(
-            z=[
-                [1, None, 30, 50, 1],
-                [20, 1, 60, 80, 30],
-                [30, 60, 1, -10, 20],
-            ],
-            x=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-            y=["Morning", "Afternoon", "Evening"],
+            z=[[brick["z"] for brick in row] for row in hmap.heatmap],
+            # x=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            # y=["Morning", "Afternoon", "Evening"],
             # hoverongaps=False,
+            hoverinfo="text",
+            text=[[make_hover(brick) for brick in row] for row in hmap.heatmap],
         )
     )
 
