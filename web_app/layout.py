@@ -61,6 +61,15 @@ def get_zstat_func(stat_value: int) -> heatmap.StatFunc:
     }[stat_value]
 
 
+def slider_handle_label(use_bins: bool) -> Dict[str, Any]:
+    """Get the slider handle label dict."""
+    return {
+        "showCurrentValue": True,
+        "label": "BINS" if use_bins else "CATEGORIES",
+        "style": {"width": "6rem"},
+    }
+
+
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
     width = "37.5em"
@@ -75,11 +84,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                         min=2,  # the bin defaulting algo is only defined >=2
                         max=10,
                         value=0,
-                        handleLabel={
-                            "showCurrentValue": True,
-                            "label": "BINS",
-                            "style": {"width": "5rem"},
-                        },
+                        handleLabel=slider_handle_label(True),
                         step=1,
                         size=width,
                     ),
@@ -114,7 +119,12 @@ def layout() -> None:
     app.layout = html.Div(
         children=[
             html.H1("Heatmap Multiplexer"),
-            dcc.Graph(id="heatmap-parent"),
+            dcc.Loading(
+                dcc.Graph(id="heatmap-parent"),
+                fullscreen=True,
+                style={"background": "rgba(255,255,255,0.5)"},  # float atop all
+                type="graph",
+            ),
             html.Div(
                 children=[
                     html.Div(
@@ -323,8 +333,10 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     [Output("heatmap-parent", "figure")]
     + [Output(f"bin-slider-x-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-x-{i}", "disabled") for i in range(NDIMS)]
+    + [Output(f"bin-slider-x-{i}", "handleLabel") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "value") for i in range(NDIMS)]
-    + [Output(f"bin-slider-y-{i}", "disabled") for i in range(NDIMS)],
+    + [Output(f"bin-slider-y-{i}", "disabled") for i in range(NDIMS)]
+    + [Output(f"bin-slider-y-{i}", "handleLabel") for i in range(NDIMS)],
     [
         Input(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "value")
         for i in range(NDIMS * 2)
@@ -490,6 +502,8 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         [fig]
         + [x["bins"] for x in x_outgoing]  # bin value
         + [not x["is_numerical"] for x in x_outgoing]  # bin disabled
+        + [slider_handle_label(x["is_numerical"]) for x in x_outgoing]
         + [y["bins"] for y in y_outgoing]  # bin value
         + [not y["is_numerical"] for y in y_outgoing]  # bin disabled
+        + [slider_handle_label(y["is_numerical"]) for y in y_outgoing]
     )
