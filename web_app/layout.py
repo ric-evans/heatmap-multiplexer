@@ -225,7 +225,8 @@ def layout() -> None:
     [
         Output(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "options")
         for i in range(NDIMS * 2)
-    ],
+    ]
+    + [Output("dropdown-color", "options")],
     Input("wbs-upload-xlsx", "contents")
     # [State("url", "pathname")],
 )
@@ -239,18 +240,15 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     dimensions = ["aaa", "bbb", "ccc"]
     logging.info(f"Dimensions Available ({len(dimensions)}): {dimensions}")
 
-    options_lists = [
-        [
-            {
-                "label": dim,
-                "value": dim,
-            }
-            for dim in dimensions
-        ]
-        for i in range(NDIMS * 2)
+    options_list = [
+        {
+            "label": dim,
+            "value": dim,
+        }
+        for dim in dimensions
     ]
 
-    return options_lists
+    return [options_list] * ((NDIMS * 2) + 1)
 
 
 @app.callback(  # type: ignore[misc]
