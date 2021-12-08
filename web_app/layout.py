@@ -3,7 +3,7 @@
 import logging
 import statistics as st
 from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, Union
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
@@ -14,6 +14,8 @@ from dash.dependencies import Input, Output, State  # type: ignore
 
 from . import dimensions, heatmap
 from .config import app
+
+CSV = "./tests/data.csv"
 
 NDIMS = 3
 
@@ -319,7 +321,7 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
 def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
     args = list(args_tuple)
-    xys: List[Optional[str]] = args[: NDIMS * 2]  # type: ignore[assignment]
+    xys: List[str] = [a if a else "" for a in args[: NDIMS * 2]]  # type: ignore[misc]
     args = args[NDIMS * 2 :]
 
     zdim: str = args.pop(0)  # type: ignore[assignment]
@@ -340,24 +342,32 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
 
     # # Aggregate # #
 
-    def do_include_dim(dim_name: Optional[str], dim_on: bool) -> bool:
-        return bool(dim_name and dim_on)
+    class DimControls(TypedDict, total=False):  # pylint:disable=C0115
+        name: str
+        on: bool
+        bins: int
+        is_numerical: bool
 
-    def filter_them(
-        dim_names: List[Optional[str]], ons: List[bool], bins: List[int]
-    ) -> Tuple[List[Tuple[str, bool, int]], List[Tuple[Optional[str], bool, int]]]:
-        originals = list(zip(dim_names, ons, bins))
-        return list(filter(lambda d: do_include_dim(d[0], d[1]), deepcopy(originals))), originals  # type: ignore[arg-type]
+    def do_include_dim(dim_ctrl: DimControls) -> bool:
+        return bool(dim_ctrl["name"] and dim_ctrl["on"])
+
+    def make_dim_controls(
+        dim_names: List[str], ons: List[bool], bins: List[int]
+    ) -> Tuple[List[DimControls], List[DimControls]]:
+        originals: List[DimControls] = [
+            {"name": o[0], "on": o[1], "bins": o[2]} for o in zip(dim_names, ons, bins)
+        ]
+        return [d for d in deepcopy(originals) if do_include_dim(d)], originals
 
     # zip & clear each xdims/ydims for ons
-    x_dims, x_dims_original = filter_them(
+    x_dims, x_dims_original = make_dim_controls(
         [a for i, a in enumerate(xys) if i % 2 == 0],
         [a for i, a in enumerate(xy_ons) if i % 2 == 0],
         [a for i, a in enumerate(xy_bins) if i % 2 == 0],
     )
     logging.info(f"Original Selected X-Dimensions: {x_dims_original}")
     logging.info(f"Post-Filtered Selected X-Dimensions: {x_dims}")
-    y_dims, y_dims_original = filter_them(
+    y_dims, y_dims_original = make_dim_controls(
         [a for i, a in enumerate(xys) if i % 2 != 0],
         [a for i, a in enumerate(xy_ons) if i % 2 != 0],
         [a for i, a in enumerate(xy_bins) if i % 2 != 0],
@@ -368,32 +378,46 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     # # DATA TIME # #
 
     hmap = heatmap.Heatmap(
-        pd.DataFrame(),
-        [d[0] for d in x_dims],
-        [d[0] for d in y_dims],
+        pd.read_csv(CSV, skipinitialspace=True),
+        [d["name"] for d in x_dims],
+        [d["name"] for d in y_dims],
         z_stat=z_stat,
-        bins={d[0]: d[2] for d in x_dims + y_dims if d[2]},
+        bins={d["name"]: d["bins"] for d in x_dims + y_dims if d["bins"]},
     )
 
     # # Transform Heatmap for Front-End # #
 
     def outgoing(
-        dims_original: List[Tuple[Optional[str], bool, int]],
-        dim_heatmap: List[dimensions.Dim],
-    ) -> Iterator[Tuple[int, bool]]:
+        dims_original: List[DimControls], dim_heatmap: List[dimensions.Dim]
+    ) -> Iterator[DimControls]:
         i = -1
-        for name, on, nbins in dims_original:
-            if not do_include_dim(name, on):
-                yield no_update, no_update
+        for dim_ctrl in dims_original:
+            if not do_include_dim(dim_ctrl):
+                yield {
+                    "name": no_update,
+                    "on": no_update,
+                    "bins": no_update,
+                    "is_numerical": no_update,
+                }
                 continue
             i += 1
-            if nbins == len(dim_heatmap[i].catbins):
-                yield no_update, not dim_heatmap[i].is_numerical
+            if dim_ctrl["bins"] == len(dim_heatmap[i].catbins):
+                yield {
+                    "name": no_update,
+                    "on": no_update,
+                    "bins": no_update,
+                    "is_numerical": dim_heatmap[i].is_numerical,
+                }
             else:
-                yield len(dim_heatmap[i].catbins), not dim_heatmap[i].is_numerical
+                yield {
+                    "name": no_update,
+                    "on": no_update,
+                    "bins": len(dim_heatmap[i].catbins),
+                    "is_numerical": dim_heatmap[i].is_numerical,
+                }
 
     x_outgoing = list(outgoing(x_dims_original, hmap.x_dims))
-    logging.info(f"Outgoing X-Dimensions: {list(zip(x_outgoing,x_dims_original))}")
+    logging.info(f"Outgoing X-Dimensions: {list(zip(x_outgoing, x_dims_original))}")
     y_outgoing = list(outgoing(y_dims_original, hmap.y_dims))
     logging.info(f"Outgoing Y-Dimensions: {list(zip(y_outgoing, y_dims_original))}")
     assert len(x_outgoing) == len(x_dims_original)
@@ -414,8 +438,8 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
 
     return tuple(
         [fig]
-        + [x[0] for x in x_outgoing]  # selection
-        + [x[1] for x in x_outgoing]  # disabled
-        + [y[0] for y in y_outgoing]  # selection
-        + [y[1] for y in y_outgoing]  # disabled
+        + [x["bins"] for x in x_outgoing]  # bin value
+        + [not x["is_numerical"] for x in x_outgoing]  # bin disabled
+        + [y["bins"] for y in y_outgoing]  # bin value
+        + [not y["is_numerical"] for y in y_outgoing]  # bin disabled
     )
