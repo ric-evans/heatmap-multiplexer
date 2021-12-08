@@ -9,6 +9,8 @@ import pandas as pd  # type: ignore[import]
 
 from .dimensions import Dim, Intersection, IntersectionMatrix
 
+StatFunc = Callable[[List[float]], float]
+
 
 class HeatBrick(TypedDict):
     """Wrap a single Heatmap datum/element/brick."""
@@ -21,7 +23,7 @@ class ZStat(TypedDict):
     """Wrap a dimension and its statistical function."""
 
     dim_name: str
-    stats_func: Callable[[List[float]], float]
+    stats_func: StatFunc
 
 
 class Heatmap:
@@ -32,7 +34,7 @@ class Heatmap:
         df: pd.DataFrame,
         x_dim_names: List[str],
         y_dim_names: List[str],
-        z_stat: Optional[ZStat] = None,  # Ex: {'Score': min}, {'Time': max}, etc.
+        z_stat: Optional[ZStat] = None,  # Ex: {'dim_name': 'Score', 'stats_func': min}
         bins: Optional[Dict[str, int]] = None,
     ) -> None:
         if not bins:

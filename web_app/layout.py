@@ -1,15 +1,18 @@
 """Dash HTML-ish layout."""
 
 import logging
-from typing import Dict, Iterator, List, Optional, Tuple, Union
+import statistics as st
+from copy import deepcopy
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
+import pandas as pd
 import plotly.graph_objects as go  # type: ignore[import]
-from dash import dcc  # type: ignore
-from dash import html
+from dash import dcc, html, no_update  # type: ignore
 from dash.dependencies import Input, Output, State  # type: ignore
 
+from . import dimensions, heatmap
 from .config import app
 
 NDIMS = 3
@@ -25,6 +28,18 @@ MEAN = 7
 STD_DEV = 8
 
 
+def get_zstat_func(stat_value: int) -> heatmap.StatFunc:
+    """Map the stat value to its function."""
+    return {  # type: ignore[return-value]
+        MIN: min,
+        MAX: max,
+        MEDIAN: st.median,
+        MODE: st.mode,
+        MEAN: st.mean,
+        STD_DEV: st.stdev,
+    }[stat_value]
+
+
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
     width = "37.5em"
@@ -38,7 +53,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                         id=f"bin-slider-{xy_str.lower()}-{num_id}",
                         min=1,
                         max=10,
-                        value=5,
+                        value=0,
                         handleLabel={
                             "showCurrentValue": True,
                             "label": "BINS",
@@ -281,7 +296,11 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
 
 
 @app.callback(  # type: ignore[misc]
-    Output("heatmap-parent", "figure"),
+    [Output("heatmap-parent", "figure")]
+    + [Output(f"bin-slider-x-{i}", "value") for i in range(NDIMS)]
+    + [Output(f"bin-slider-x-{i}", "disabled") for i in range(NDIMS)]
+    + [Output(f"bin-slider-y-{i}", "value") for i in range(NDIMS)]
+    + [Output(f"bin-slider-y-{i}", "disabled") for i in range(NDIMS)],
     [
         Input(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "value")
         for i in range(NDIMS * 2)
@@ -297,49 +316,90 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     ],
     # [State("url", "pathname")],
 )
-def make_heatmap(*args_tuple: Union[str, bool, None]) -> go.Figure:
+def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
     args = list(args_tuple)
     xys: List[Optional[str]] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
-    x_dim_names = [a for i, a in enumerate(xys) if i % 2 == 0]
-    logging.info(f"Selected X-Dimensions: {x_dim_names}")
-    y_dim_names = [a for i, a in enumerate(xys) if i % 2 != 0]
-    logging.info(f"Selected Y-Dimensions: {y_dim_names}")
 
-    zdim = args.pop(0)
+    zdim: str = args.pop(0)  # type: ignore[assignment]
     logging.info(f"Selected Z-Dimension: {zdim}")
-
-    zstat = args.pop(0)
-    logging.info(f"Selected Z-Dimension Statistic: {zstat}")
+    z_stat_value: int = args.pop(0)  # type: ignore[assignment]
+    logging.info(f"Selected Z-Dimension Statistic: {z_stat_value}")
+    z_stat: Optional[heatmap.ZStat] = None
+    if z_stat_value and zdim:
+        z_stat = {"dim_name": zdim, "stats_func": get_zstat_func(z_stat_value)}
 
     # get ons
     xy_ons: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
-    x_ons = [a for i, a in enumerate(xy_ons) if i % 2 == 0]
-    logging.info(f"On/Off X-Dimensions: {x_ons}")
-    y_ons: List[bool] = [a for i, a in enumerate(xy_ons) if i % 2 != 0]
-    logging.info(f"On/Off Y-Dimensions: {y_ons}")
 
     # get bins
-    xy_bins: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
+    xy_bins: List[int] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
-    x_bins = [a for i, a in enumerate(xy_bins) if i % 2 == 0]
-    logging.info(f"#Bins X-Dimensions: {x_bins}")
-    y_bins: List[bool] = [a for i, a in enumerate(xy_bins) if i % 2 != 0]
-    logging.info(f"#Bins Y-Dimensions: {y_bins}")
 
-    # aggregate
-    x_dims = list(zip(x_dim_names, x_ons, x_bins))
-    y_dims = list(zip(y_dim_names, y_ons, y_bins))
+    # # Aggregate # #
+
+    def do_include_dim(dim_name: Optional[str], dim_on: bool) -> bool:
+        return bool(dim_name and dim_on)
+
+    def filter_them(
+        dim_names: List[Optional[str]], ons: List[bool], bins: List[int]
+    ) -> Tuple[List[Tuple[str, bool, int]], List[Tuple[Optional[str], bool, int]]]:
+        originals = list(zip(dim_names, ons, bins))
+        return list(filter(lambda d: do_include_dim(d[0], d[1]), deepcopy(originals))), originals  # type: ignore[arg-type]
 
     # zip & clear each xdims/ydims for ons
-    x_dims = list(filter(lambda x: bool(x[1] and x[0]), x_dims))
+    x_dims, x_dims_original = filter_them(
+        [a for i, a in enumerate(xys) if i % 2 == 0],
+        [a for i, a in enumerate(xy_ons) if i % 2 == 0],
+        [a for i, a in enumerate(xy_bins) if i % 2 == 0],
+    )
+    logging.info(f"Original Selected X-Dimensions: {x_dims_original}")
     logging.info(f"Post-Filtered Selected X-Dimensions: {x_dims}")
-    y_dims = list(filter(lambda y: bool(y[1] and y[0]), y_dims))
+    y_dims, y_dims_original = filter_them(
+        [a for i, a in enumerate(xys) if i % 2 != 0],
+        [a for i, a in enumerate(xy_ons) if i % 2 != 0],
+        [a for i, a in enumerate(xy_bins) if i % 2 != 0],
+    )
+    logging.info(f"Original Selected Y-Dimensions: {y_dims_original}")
     logging.info(f"Post-Filtered Selected Y-Dimensions: {y_dims}")
 
-    return go.Figure(
+    # # DATA TIME # #
+
+    hmap = heatmap.Heatmap(
+        pd.DataFrame(),
+        [d[0] for d in x_dims],
+        [d[0] for d in y_dims],
+        z_stat=z_stat,
+        bins={d[0]: d[2] for d in x_dims + y_dims if d[2]},
+    )
+
+    # # Transform Heatmap for Front-End # #
+
+    def outgoing(
+        dims_original: List[Tuple[Optional[str], bool, int]],
+        dim_heatmap: List[dimensions.Dim],
+    ) -> Iterator[Tuple[int, bool]]:
+        i = -1
+        for name, on, nbins in dims_original:
+            if not do_include_dim(name, on):
+                yield no_update, no_update
+                continue
+            i += 1
+            if nbins == len(dim_heatmap[i].catbins):
+                yield no_update, not dim_heatmap[i].is_numerical
+            else:
+                yield len(dim_heatmap[i].catbins), not dim_heatmap[i].is_numerical
+
+    x_outgoing = list(outgoing(x_dims_original, hmap.x_dims))
+    logging.info(f"Outgoing X-Dimensions: {list(zip(x_outgoing,x_dims_original))}")
+    y_outgoing = list(outgoing(y_dims_original, hmap.y_dims))
+    logging.info(f"Outgoing Y-Dimensions: {list(zip(y_outgoing, y_dims_original))}")
+    assert len(x_outgoing) == len(x_dims_original)
+    assert len(y_outgoing) == len(y_dims_original)
+
+    fig = go.Figure(
         data=go.Heatmap(
             z=[
                 [1, None, 30, 50, 1],
@@ -350,4 +410,12 @@ def make_heatmap(*args_tuple: Union[str, bool, None]) -> go.Figure:
             y=["Morning", "Afternoon", "Evening"],
             # hoverongaps=False,
         )
+    )
+
+    return tuple(
+        [fig]
+        + [x[0] for x in x_outgoing]  # selection
+        + [x[1] for x in x_outgoing]  # disabled
+        + [y[0] for y in y_outgoing]  # selection
+        + [y[1] for y in y_outgoing]  # disabled
     )
