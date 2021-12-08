@@ -4,7 +4,7 @@ import logging
 from typing import Dict, List
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
-import dash_daq as daq
+import dash_daq as daq  # type: ignore[import]
 import plotly.graph_objects as go  # type: ignore[import]
 from dash import dcc  # type: ignore
 from dash import html
@@ -69,7 +69,117 @@ def layout() -> None:
         children=[
             html.H1("Heatmap Multiplexer"),
             dcc.Graph(id="heatmap-parent"),
-            html.H4("Select Dimensions"),
+            html.Div(
+                children=[
+                    html.Div(
+                        style={
+                            "text-align": "center",
+                            "display": "block",
+                            "margin-left": "auto",
+                            "margin-right": "auto",
+                            "width": "39rem",
+                        },
+                        children=[
+                            html.Div("Data Coloring"),
+                            # Count or Dimension
+                            html.Div(
+                                className="radio-group",
+                                style={
+                                    # "text-align": "center",
+                                    "margin-bottom": "1rem",
+                                },
+                                children=dbc.RadioItems(
+                                    id="radios",
+                                    className="btn-group",
+                                    # style={"width": "500rem"},
+                                    inputClassName="btn-check",
+                                    labelClassName="btn btn-outline-primary fixed-width-button",
+                                    labelCheckedClassName="active",
+                                    options=[
+                                        {
+                                            "label": "count",
+                                            "value": 1,
+                                        },
+                                        {
+                                            "label": "dimensional statistic",
+                                            "value": 2,
+                                        },
+                                    ],
+                                    value=1,
+                                ),
+                            ),
+                            # Dimension Coloring
+                            dbc.Collapse(
+                                id="collapse",
+                                is_open=True,
+                                # style={"width": "39rem"},
+                                children=dbc.Card(
+                                    html.Div(
+                                        style={
+                                            # "width": "37rem",
+                                            "display": "block",
+                                            "margin-left": "auto",
+                                            "margin-right": "auto",
+                                            # "width": "40%",
+                                            "margin-top": "1rem",
+                                            "margin-bottom": "1rem",
+                                        },
+                                        children=[
+                                            dcc.Dropdown(
+                                                style={"text-align": "center"},
+                                                id="dropdown-color",
+                                                placeholder="Select Dimension",
+                                                clearable=True,
+                                            ),
+                                            html.Div(
+                                                className="radio-group",
+                                                style={"text-align": "center"},
+                                                children=dbc.RadioItems(
+                                                    id="color-radios",
+                                                    className="btn-group",
+                                                    # style={"width": "500rem"},
+                                                    inputClassName="btn-check",
+                                                    labelClassName="btn btn-outline-primary",
+                                                    labelCheckedClassName="active",
+                                                    options=[
+                                                        {
+                                                            "label": "minimum",
+                                                            "value": 1,
+                                                        },
+                                                        {
+                                                            "label": "maximum",
+                                                            "value": 2,
+                                                        },
+                                                        {
+                                                            "label": "median",
+                                                            "value": 3,
+                                                        },
+                                                        {
+                                                            "label": "mode",
+                                                            "value": 4,
+                                                        },
+                                                        {
+                                                            "label": "mean",
+                                                            "value": 5,
+                                                        },
+                                                        {
+                                                            "label": "standard deviation",
+                                                            "value": 6,
+                                                        },
+                                                    ],
+                                                    # value=1,
+                                                ),
+                                            ),
+                                        ],
+                                    ),
+                                ),
+                            ),
+                        ],
+                    ),
+                ]
+            ),
+            html.Hr(style={"margin-top": "2em", "margin-bottom": "1em"}),
+            html.H5("Select Dimensions"),
             dbc.Row(
                 style={"margin-left": "2em", "margin-right": "2em"},
                 children=[
@@ -87,7 +197,7 @@ def layout() -> None:
                 ],
             ),
             html.Hr(style={"margin-top": "4em", "margin-bottom": "1em"}),
-            html.H4("Upload CSV File"),
+            html.H5("Upload CSV File"),
             dcc.Upload(
                 id="wbs-upload-xlsx",
                 children=html.Div(["Drag and Drop or ", html.A("Select File")]),
