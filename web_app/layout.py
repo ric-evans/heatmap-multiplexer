@@ -290,6 +290,10 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     + [
         Input(f"hide-switch-{'x' if i%2==0 else 'y'}-{i//2}", "on")
         for i in range(NDIMS * 2)
+    ]
+    + [
+        Input(f"bin-slider-{'x' if i%2==0 else 'y'}-{i//2}", "value")
+        for i in range(NDIMS * 2)
     ],
     # [State("url", "pathname")],
 )
@@ -298,10 +302,10 @@ def make_heatmap(*args_tuple: Union[str, bool, None]) -> go.Figure:
     args = list(args_tuple)
     xys: List[Optional[str]] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
-    xdims = [a for i, a in enumerate(xys) if i % 2 == 0]
-    logging.info(f"Selected X-Dimensions: {xdims}")
-    ydims = [a for i, a in enumerate(xys) if i % 2 != 0]
-    logging.info(f"Selected Y-Dimensions: {ydims}")
+    x_dim_names = [a for i, a in enumerate(xys) if i % 2 == 0]
+    logging.info(f"Selected X-Dimensions: {x_dim_names}")
+    y_dim_names = [a for i, a in enumerate(xys) if i % 2 != 0]
+    logging.info(f"Selected Y-Dimensions: {y_dim_names}")
 
     zdim = args.pop(0)
     logging.info(f"Selected Z-Dimension: {zdim}")
@@ -309,23 +313,31 @@ def make_heatmap(*args_tuple: Union[str, bool, None]) -> go.Figure:
     zstat = args.pop(0)
     logging.info(f"Selected Z-Dimension Statistic: {zstat}")
 
+    # get ons
     xy_ons: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
     x_ons = [a for i, a in enumerate(xy_ons) if i % 2 == 0]
-    logging.info(f"On/Off X-Dimensions: {xdims}")
+    logging.info(f"On/Off X-Dimensions: {x_ons}")
     y_ons: List[bool] = [a for i, a in enumerate(xy_ons) if i % 2 != 0]
-    logging.info(f"On/Off Y-Dimensions: {ydims}")
+    logging.info(f"On/Off Y-Dimensions: {y_ons}")
 
-    def on_off_it(dims: List[Optional[str]], ons: List[bool]) -> Iterator[str]:
-        for dim, is_on in zip(dims, ons):
-            if is_on and dim:
-                yield dim
+    # get bins
+    xy_bins: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
+    args = args[NDIMS * 2 :]
+    x_bins = [a for i, a in enumerate(xy_bins) if i % 2 == 0]
+    logging.info(f"#Bins X-Dimensions: {x_bins}")
+    y_bins: List[bool] = [a for i, a in enumerate(xy_bins) if i % 2 != 0]
+    logging.info(f"#Bins Y-Dimensions: {y_bins}")
+
+    # aggregate
+    x_dims = list(zip(x_dim_names, x_ons, x_bins))
+    y_dims = list(zip(y_dim_names, y_ons, y_bins))
 
     # zip & clear each xdims/ydims for ons
-    xdims = list(on_off_it(xdims, x_ons))
-    logging.info(f"Post-Filtered Selected X-Dimensions: {xdims}")
-    ydims = list(on_off_it(ydims, y_ons))
-    logging.info(f"Post-Filtered Selected Y-Dimensions: {ydims}")
+    x_dims = list(filter(lambda x: bool(x[1] and x[0]), x_dims))
+    logging.info(f"Post-Filtered Selected X-Dimensions: {x_dims}")
+    y_dims = list(filter(lambda y: bool(y[1] and y[0]), y_dims))
+    logging.info(f"Post-Filtered Selected Y-Dimensions: {y_dims}")
 
     return go.Figure(
         data=go.Heatmap(
