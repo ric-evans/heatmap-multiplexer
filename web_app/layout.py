@@ -1,7 +1,7 @@
 """Dash HTML-ish layout."""
 
 import logging
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
@@ -13,6 +13,16 @@ from dash.dependencies import Input, Output, State  # type: ignore
 from .config import app
 
 NDIMS = 3
+
+NO_RADIO_SELECT = 0
+COUNT = 1
+STATS = 2
+MIN = 3
+MAX = 4
+MEDIAN = 5
+MODE = 6
+MEAN = 7
+STD_DEV = 8
 
 
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
@@ -89,7 +99,7 @@ def layout() -> None:
                                     "margin-bottom": "1rem",
                                 },
                                 children=dbc.RadioItems(
-                                    id="radios",
+                                    id="color-count-or-stat-radios",
                                     className="btn-group",
                                     # style={"width": "500rem"},
                                     inputClassName="btn-check",
@@ -98,19 +108,19 @@ def layout() -> None:
                                     options=[
                                         {
                                             "label": "count",
-                                            "value": 1,
+                                            "value": COUNT,
                                         },
                                         {
                                             "label": "dimensional statistic",
-                                            "value": 2,
+                                            "value": STATS,
                                         },
                                     ],
-                                    value=1,
+                                    value=COUNT,
                                 ),
                             ),
                             # Dimension Coloring
                             dbc.Collapse(
-                                id="collapse",
+                                id="color-collapse",
                                 is_open=True,
                                 # style={"width": "39rem"},
                                 children=dbc.Card(
@@ -129,13 +139,13 @@ def layout() -> None:
                                                 style={"text-align": "center"},
                                                 id="dropdown-color",
                                                 placeholder="Select Dimension",
-                                                clearable=True,
+                                                clearable=False,
                                             ),
                                             html.Div(
                                                 className="radio-group",
                                                 style={"text-align": "center"},
                                                 children=dbc.RadioItems(
-                                                    id="color-radios",
+                                                    id="color-stats-select-radios",
                                                     className="btn-group",
                                                     # style={"width": "500rem"},
                                                     inputClassName="btn-check",
@@ -144,30 +154,29 @@ def layout() -> None:
                                                     options=[
                                                         {
                                                             "label": "minimum",
-                                                            "value": 1,
+                                                            "value": MIN,
                                                         },
                                                         {
                                                             "label": "maximum",
-                                                            "value": 2,
+                                                            "value": MAX,
                                                         },
                                                         {
                                                             "label": "median",
-                                                            "value": 3,
+                                                            "value": MEDIAN,
                                                         },
                                                         {
                                                             "label": "mode",
-                                                            "value": 4,
+                                                            "value": MODE,
                                                         },
                                                         {
                                                             "label": "mean",
-                                                            "value": 5,
+                                                            "value": MEAN,
                                                         },
                                                         {
                                                             "label": "standard deviation",
-                                                            "value": 6,
+                                                            "value": STD_DEV,
                                                         },
                                                     ],
-                                                    # value=1,
                                                 ),
                                             ),
                                         ],
@@ -223,6 +232,26 @@ def layout() -> None:
 
 @app.callback(  # type: ignore[misc]
     [
+        Output("color-collapse", "is_open"),
+        Output("color-stats-select-radios", "value"),
+        Output("dropdown-color", "value"),
+    ],
+    [Input("color-count-or-stat-radios", "value")],
+    # [State("url", "pathname")],
+    prevent_initial_callbacks=True,
+)
+def count_or_stats(value: str) -> Tuple[bool, int, str]:
+    """Toggle the count-or-stats radio button & collapse box."""
+    if value == COUNT:
+        return False, NO_RADIO_SELECT, ""
+    elif value == STATS:
+        return True, NO_RADIO_SELECT, ""
+    else:
+        raise ValueError(f"Unrecognized value: {value}")
+
+
+@app.callback(  # type: ignore[misc]
+    [
         Output(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "options")
         for i in range(NDIMS * 2)
     ]
@@ -256,15 +285,22 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     [
         Input(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "value")
         for i in range(NDIMS * 2)
-    ],
+    ]
+    + [Input("dropdown-color", "value"), Input("color-stats-select-radios", "value")],
     # [State("url", "pathname")],
 )
 def make_heatmap(*args: str) -> go.Figure:
     """Serve up the heatmap wrapped in a go.Figure instance."""
-    xdims = [a for i, a in enumerate(args) if i % 2 == 0]
+    xdims = [a for i, a in enumerate(args[: NDIMS * 2]) if i % 2 == 0]
     logging.info(f"Selected X-Dimensions: {xdims}")
-    ydims = [a for i, a in enumerate(args) if i % 2 != 0]
+    ydims = [a for i, a in enumerate(args[: NDIMS * 2]) if i % 2 != 0]
     logging.info(f"Selected Y-Dimensions: {ydims}")
+
+    zdim = args[(NDIMS * 2)]
+    logging.info(f"Selected Z-Dimension: {zdim}")
+
+    zstat = args[(NDIMS * 2) + 1]
+    logging.info(f"Selected Z-Dimension Statistic: {zstat}")
 
     return go.Figure(
         data=go.Heatmap(
