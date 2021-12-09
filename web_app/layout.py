@@ -88,6 +88,9 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                         step=1,
                         size=width,
                     ),
+                    # TODO- add auto-10^x trigger
+                    #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
+                    #  start at top & decrease, until about equal with default #bins
                     dcc.Dropdown(
                         style={"width": width},
                         id=f"dropdown-{xy_str.lower()}-{num_id}",
@@ -99,13 +102,42 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
             ),
             dbc.Col(
                 align="start",
+                width=1,
                 children=daq.BooleanSwitch(
-                    style={"width": 55},
+                    # style={"width": 55},
                     id=f"hide-switch-{xy_str.lower()}-{num_id}",
                     on=True,
                     label={"label": "Visible", "style": {"margin-bottom": 0}},
                     labelPosition="top",
                 ),
+            ),
+            dbc.Col(
+                align="start",
+                style={"height": "5rem"},
+                children=[
+                    dbc.Button(
+                        id=id_,
+                        children=arrow if not disabled else "-",
+                        style={
+                            "width": "4rem",
+                            "padding": "0",
+                            # "padding-left": "0",
+                            # "padding-right": "0",
+                            "line-height": 0,
+                            "font-size": "3.5rem",
+                            "margin-top": "1.3rem",
+                            # "border": 0,
+                            "margin-right": "1rem",
+                        },
+                        disabled=disabled,
+                        # color="none",
+                        outline=True,
+                    )
+                    for id_, arrow, disabled in [
+                        (f"up-{xy_str.lower()}-{num_id}", "▲", num_id == 0),
+                        (f"down-{xy_str.lower()}-{num_id}", "▼", num_id == NDIMS - 1),
+                    ]
+                ],
             ),
         ],
     )
