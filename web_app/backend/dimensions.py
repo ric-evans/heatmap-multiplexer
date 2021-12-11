@@ -1,6 +1,7 @@
 """Contains utilities for handling dimensions."""
 
 
+import logging
 import math
 from copy import deepcopy
 from typing import Any, List, Optional, Union
@@ -50,7 +51,6 @@ class Dim:
 
         # get a sorted unique list w/o nan values
         values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
-        print(values)
         if isinstance(values[0], (float, int)):
             if not num_bins:
                 # use Sturges’ Rule
@@ -64,7 +64,8 @@ class Dim:
             )
         else:
             catbins = values
-        print(catbins)
+
+        logging.info(f"Cat-Bins: {catbins}")
         return Dim(name, catbins)
 
 

@@ -55,17 +55,13 @@ class Heatmap:
 
         def brick_it(inter: Intersection) -> HeatBrick:
             temp = deepcopy(df)
-
             for dimselect in inter.dimselections:
-                query = dimselect.get_pandas_query()
-                print(query)
-                temp = temp.query(query)
+                temp = temp.query(dimselect.get_pandas_query())
 
             z = None
             if z_stat:
                 # Ex: [0, 1, 3, 2.5, 3] or ['apple', 'lemon', 'lemon']
                 z_list = list(temp[z_stat["dim_name"]])
-                print(z_list)
                 if z_list:
                     # apply some function to it, like average or a lambda
                     z = z_stat["stats_func"](z_list)

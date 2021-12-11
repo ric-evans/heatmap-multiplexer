@@ -212,7 +212,6 @@ class DimControlUtils:
                 brick["intersection"].items(), ys_bin0 + xs_bin0
             ):
                 #  (left, right]
-                print(low)
                 if isinstance(val, pd.Interval):
                     bracket, left = "(", val.left
                     if val == low:
