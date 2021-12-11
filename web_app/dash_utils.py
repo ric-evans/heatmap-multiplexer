@@ -178,7 +178,7 @@ class DimControlUtils:
                         "bins": 0,  # reset empty dim to 0
                         "is_numerical": dim_ctrl["is_numerical"],
                     }
-                elif not dim_ctrl["bins"]:
+                elif not dim_ctrl["on"]:
                     yield {
                         "name": dim_ctrl["name"],
                         "on": dim_ctrl["on"],
