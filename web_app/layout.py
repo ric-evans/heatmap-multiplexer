@@ -2,19 +2,15 @@
 
 import base64
 import logging
-import re
-from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
-import pandas as pd  # type: ignore[import]
-import plotly.graph_objects as go  # type: ignore[import]
-from dash import dcc, html, no_update  # type: ignore
+from dash import dcc, html  # type: ignore
 from dash.dependencies import Input, Output, State  # type: ignore
 
+from . import backend
 from . import dash_utils as du
-from . import dimensions, heatmap
 from .config import CSV, NDIMS, app
 
 
@@ -409,7 +405,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     du.DimControlUtils.log_dims(y_to_backend, "Post-Filtered Selected Y-Dimensions")
 
     df = du.get_csv_df()
-    hmap = heatmap.Heatmap(
+    hmap = backend.heatmap.Heatmap(
         df,
         [d["name"] for d in x_to_backend],
         [d["name"] for d in y_to_backend],

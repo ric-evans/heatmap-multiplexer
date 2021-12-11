@@ -1,22 +1,19 @@
 """Utils for the front-end."""
 
-import base64
+
 import enum
 import logging
 import re
 import statistics as st
 from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, Union, cast
+from typing import Any, Dict, Iterator, List, Optional, TypedDict, cast
 
-import dash_bootstrap_components as dbc  # type: ignore[import]
-import dash_daq as daq  # type: ignore[import]
 import pandas as pd  # type: ignore[import]
 import plotly.graph_objects as go  # type: ignore[import]
-from dash import callback_context, dcc, html, no_update  # type: ignore
-from dash.dependencies import Input, Output, State  # type: ignore
+from dash import callback_context, no_update  # type: ignore
 
-from . import dimensions, heatmap
-from .config import CSV, CSV_BACKUP, app
+from . import backend
+from .config import CSV, CSV_BACKUP
 
 
 class StatsRadioOptions(enum.Enum):
@@ -50,11 +47,6 @@ def get_csv_df() -> pd.DataFrame:
         return pd.read_csv(CSV_BACKUP, skipinitialspace=True)
 
 
-def get_zstat_func(stat_value: int) -> heatmap.StatFunc:
-    """Map the stat option value to its function."""
-    return
-
-
 def slider_handle_label(use_bins: bool) -> Dict[str, Any]:
     """Get the slider handle label dict."""
     return {
@@ -77,7 +69,7 @@ Z_STAT_FUNCS = {
 }
 
 
-def get_z_stat(z_stat_value: int, zdim: str) -> Optional[heatmap.ZStat]:
+def get_z_stat(z_stat_value: int, zdim: str) -> Optional[backend.heatmap.ZStat]:
     """Get the heatmap.ZStat dict from args."""
     if z_stat_value and zdim:
         return {"dim_name": zdim, "stats_func": Z_STAT_FUNCS[z_stat_value]}  # type: ignore[typeddict-item]
@@ -120,7 +112,7 @@ class DimControlUtils:
 
     @staticmethod
     def from_dash(
-        dim_names: List[str],
+        names: List[str],
         ons: List[bool],
         bins: List[int],
         disableds: List[bool],
@@ -132,7 +124,7 @@ class DimControlUtils:
             return bool(triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value")
 
         from_dash: List[DimControls] = []
-        for i, zipped in enumerate(zip(dim_names, ons, bins, disableds)):
+        for i, zipped in enumerate(zip(names, ons, bins, disableds)):
             from_dash.append(
                 {
                     "name": zipped[0],
@@ -164,16 +156,14 @@ class DimControlUtils:
         return from_dash
 
     @staticmethod
-    def to_backend(
-        dims_from_dash: List[DimControls],
-    ) -> List[DimControls]:
+    def to_backend(dims_from_dash: List[DimControls]) -> List[DimControls]:
         """Get the to_backend list for Dash."""
         return [d for d in deepcopy(dims_from_dash) if d["name"] and d["on"]]
 
     @staticmethod
     def to_dash(
         dims_from_dash: List[DimControls],
-        dim_heatmap: List[dimensions.Dim],
+        dim_heatmap: List[backend.dimensions.Dim],
         dims_to_backend: List[DimControls],
     ) -> Iterator[DimControls]:
         """Get the to_dash list for Dash."""
@@ -211,12 +201,12 @@ class DimControlUtils:
             }
 
     @staticmethod
-    def make_fig(hmap: heatmap.Heatmap, df: pd.DataFrame) -> go.Figure:
+    def make_fig(hmap: backend.heatmap.Heatmap, df: pd.DataFrame) -> go.Figure:
         """Make go.Figure with the heatmap."""
         xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
         ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
 
-        def make_hover(brick: heatmap.HeatBrick) -> str:
+        def make_hover(brick: backend.heatmap.HeatBrick) -> str:
             string = f"{brick['z']} <br>"
             for (key, val), low in zip(
                 brick["intersection"].items(), ys_bin0 + xs_bin0
