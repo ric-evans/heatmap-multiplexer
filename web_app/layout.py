@@ -3,72 +3,19 @@
 import base64
 import logging
 import re
-import statistics as st
 from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, Union, cast
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, Union
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
 import pandas as pd  # type: ignore[import]
 import plotly.graph_objects as go  # type: ignore[import]
-from dash import callback_context, dcc, html, no_update  # type: ignore
+from dash import dcc, html, no_update  # type: ignore
 from dash.dependencies import Input, Output, State  # type: ignore
 
+from . import dash_utils as du
 from . import dimensions, heatmap
-from .config import app
-
-CSV = "./used-data.csv"
-CSV_BACKUP = "./used-data-bkp.csv"
-
-NDIMS = 3
-
-NO_RADIO_SELECT = 0
-COUNT = 1
-STATS = 2
-MIN = 3
-MAX = 4
-MEDIAN = 5
-MODE = 6
-MEAN = 7
-STD_DEV = 8
-
-
-def triggered() -> str:
-    """Return the component that triggered the callback.
-
-    https://dash.plotly.com/advanced-callbacks
-    """
-    trig = callback_context.triggered[0]["prop_id"]
-    return cast(str, trig)
-
-
-def get_csv_df() -> pd.DataFrame:
-    """Read the csv and return the DataFrame."""
-    try:
-        return pd.read_csv(CSV, skipinitialspace=True)
-    except FileNotFoundError:
-        return pd.read_csv(CSV_BACKUP, skipinitialspace=True)
-
-
-def get_zstat_func(stat_value: int) -> heatmap.StatFunc:
-    """Map the stat value to its function."""
-    return {  # type: ignore[return-value]
-        MIN: min,
-        MAX: max,
-        MEDIAN: st.median,
-        MODE: st.mode,
-        MEAN: st.mean,
-        STD_DEV: st.stdev,
-    }[stat_value]
-
-
-def slider_handle_label(use_bins: bool) -> Dict[str, Any]:
-    """Get the slider handle label dict."""
-    return {
-        "showCurrentValue": True,
-        "label": "BINS" if use_bins else "CATEGORIES",
-        "style": {"width": "6rem"},
-    }
+from .config import CSV, NDIMS, app
 
 
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
@@ -85,7 +32,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                         min=2,  # the bin defaulting algo is only defined >=2
                         max=10,
                         value=0,
-                        handleLabel=slider_handle_label(True),
+                        handleLabel=du.slider_handle_label(True),
                         step=1,
                         size=width,
                         disabled=False,
@@ -191,14 +138,14 @@ def layout() -> None:
                                     options=[
                                         {
                                             "label": "count",
-                                            "value": COUNT,
+                                            "value": du.StatsRadioOptions.COUNT.value,
                                         },
                                         {
                                             "label": "dimensional statistic",
-                                            "value": STATS,
+                                            "value": du.StatsRadioOptions.STATS.value,
                                         },
                                     ],
-                                    value=COUNT,
+                                    value=du.StatsRadioOptions.COUNT.value,
                                 ),
                             ),
                             # Dimension Coloring
@@ -237,27 +184,27 @@ def layout() -> None:
                                                     options=[
                                                         {
                                                             "label": "minimum",
-                                                            "value": MIN,
+                                                            "value": du.StatsRadioOptions.MIN.value,
                                                         },
                                                         {
                                                             "label": "maximum",
-                                                            "value": MAX,
+                                                            "value": du.StatsRadioOptions.MAX.value,
                                                         },
                                                         {
                                                             "label": "median",
-                                                            "value": MEDIAN,
+                                                            "value": du.StatsRadioOptions.MEDIAN.value,
                                                         },
                                                         {
                                                             "label": "mode",
-                                                            "value": MODE,
+                                                            "value": du.StatsRadioOptions.MODE.value,
                                                         },
                                                         {
                                                             "label": "mean",
-                                                            "value": MEAN,
+                                                            "value": du.StatsRadioOptions.MEAN.value,
                                                         },
                                                         {
                                                             "label": "standard deviation",
-                                                            "value": STD_DEV,
+                                                            "value": du.StatsRadioOptions.STD_DEV.value,
                                                         },
                                                     ],
                                                 ),
@@ -325,10 +272,10 @@ def layout() -> None:
 )
 def count_or_stats(value: str) -> Tuple[bool, int, str]:
     """Toggle the count-or-stats radio button & collapse box."""
-    if value == COUNT:
-        return False, NO_RADIO_SELECT, ""
-    elif value == STATS:
-        return True, NO_RADIO_SELECT, ""
+    if value == du.StatsRadioOptions.COUNT.value:
+        return False, du.StatsRadioOptions.NO_RADIO_SELECT.value, ""
+    elif value == du.StatsRadioOptions.STATS.value:
+        return True, du.StatsRadioOptions.NO_RADIO_SELECT.value, ""
     else:
         raise ValueError(f"Unrecognized value: {value}")
 
@@ -352,7 +299,7 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     except IndexError:
         pass
 
-    df = get_csv_df()
+    df = du.get_csv_df()
     logging.info(f"Dimensions Available ({len(df.columns)}): {df.columns}")
 
     options = [
@@ -417,7 +364,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     logging.info(f"Selected Z-Dimension Statistic: {z_stat_value}")
     z_stat: Optional[heatmap.ZStat] = None
     if z_stat_value and zdim:
-        z_stat = {"dim_name": zdim, "stats_func": get_zstat_func(z_stat_value)}
+        z_stat = {"dim_name": zdim, "stats_func": du.get_zstat_func(z_stat_value)}
 
     # get ons
     xy_ons: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
@@ -464,7 +411,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
             for key, val in dim_ctrl.items():
                 logging.debug(f"{key}:{val}")
             if zipped_dims:
-                logging.debug(f"- - - -")
+                logging.debug("- - - -")
                 for key, val in zipped_dims[i].items():
                     logging.debug(f"{key}:{val}")
 
@@ -476,7 +423,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         is_x: bool,
     ) -> List[DimControls]:
         def is_new_dropdown_value(i: int) -> bool:
-            return bool(triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value")
+            return bool(du.triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value")
 
         originals: List[DimControls] = []
         for i, o in enumerate(zip(dim_names, ons, bins, disableds)):
@@ -491,7 +438,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
 
         m = re.match(
             fr"^(?P<updown>up|down)-{'x' if is_x else'y'}-(?P<num_id>\d+)\.n_clicks$",
-            triggered(),
+            du.triggered(),
         )
         if m:
             num_id = int(m.groupdict()["num_id"])
@@ -506,7 +453,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
                     f"Moving Down {'x' if is_x else'y'} #{num_id} to #{num_id + 1}"
                 )
             else:
-                ValueError(f"Could not detect up/down button trigger: {triggered()}")
+                ValueError(f"Could not detect up/down button trigger: {du.triggered()}")
 
         return originals
 
@@ -530,15 +477,12 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
 
     # # DATA TIME # #
 
-    def do_include_dim(dim_ctrl: DimControls) -> bool:
-        return bool(dim_ctrl["name"] and dim_ctrl["on"])
-
-    x_incoming = [d for d in deepcopy(x_originals) if do_include_dim(d)]
+    x_incoming = [d for d in deepcopy(x_originals) if d["name"] and d["on"]]
     log_dims(x_incoming, "Post-Filtered Selected X-Dimensions")
-    y_incoming = [d for d in deepcopy(y_originals) if do_include_dim(d)]
+    y_incoming = [d for d in deepcopy(y_originals) if d["name"] and d["on"]]
     log_dims(y_incoming, "Post-Filtered Selected Y-Dimensions")
 
-    df = get_csv_df()
+    df = du.get_csv_df()
     hmap = heatmap.Heatmap(
         df,
         [d["name"] for d in x_incoming],
@@ -550,12 +494,14 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     # # Transform Heatmap for Front-End # #
 
     def outgoing(
-        dims_original: List[DimControls], dim_heatmap: List[dimensions.Dim]
+        dims_original: List[DimControls],
+        dim_heatmap: List[dimensions.Dim],
+        dims_incoming: List[DimControls],
     ) -> Iterator[DimControls]:
         i = -1
         for dim_ctrl in dims_original:
             # Was this data even heatmapped?
-            if not do_include_dim(dim_ctrl):
+            if dim_ctrl not in dims_incoming:
                 if not dim_ctrl["name"]:
                     yield {
                         "name": dim_ctrl["name"],
@@ -570,6 +516,10 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
                         "bins": dim_ctrl["bins"],
                         "is_numerical": dim_ctrl["is_numerical"],
                     }
+                else:
+                    raise ValueError(
+                        f"Dim Control was excluded for unknown reason: {dim_ctrl}"
+                    )
                 continue
             # Update if heatmap overrode values
             i += 1
@@ -581,9 +531,9 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
                 "is_numerical": dim_heatmap[i].is_numerical,
             }
 
-    x_outgoing = list(outgoing(x_originals, hmap.x_dims))
+    x_outgoing = list(outgoing(x_originals, hmap.x_dims, x_incoming))
     log_dims(x_outgoing, "Outgoing X-Dimensions (vs Originals)", x_originals)
-    y_outgoing = list(outgoing(y_originals, hmap.y_dims))
+    y_outgoing = list(outgoing(y_originals, hmap.y_dims, y_incoming))
     log_dims(y_outgoing, "Outgoing Y-Dimensions (vs Originals)", y_originals)
 
     xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
@@ -619,9 +569,9 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         + [x["name"] for x in x_outgoing]
         + [x["bins"] for x in x_outgoing]  # bin value
         + [not x["is_numerical"] for x in x_outgoing]  # bin disabled
-        + [slider_handle_label(x["is_numerical"]) for x in x_outgoing]
+        + [du.slider_handle_label(x["is_numerical"]) for x in x_outgoing]
         + [y["name"] for y in y_outgoing]
         + [y["bins"] for y in y_outgoing]  # bin value
         + [not y["is_numerical"] for y in y_outgoing]  # bin disabled
-        + [slider_handle_label(y["is_numerical"]) for y in y_outgoing]
+        + [du.slider_handle_label(y["is_numerical"]) for y in y_outgoing]
     )

@@ -8,6 +8,12 @@ import dash  # type: ignore
 import dash_bootstrap_components as dbc  # type: ignore
 import flask
 
+CSV = "./used-data.csv"
+CSV_BACKUP = "./used-data-bkp.csv"
+
+NDIMS = 3
+
+
 # --------------------------------------------------------------------------------------
 # Set-up Dash server
 
