@@ -362,9 +362,6 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     logging.info(f"Selected Z-Dimension: {zdim}")
     z_stat_value: int = args.pop(0)  # type: ignore[assignment]
     logging.info(f"Selected Z-Dimension Statistic: {z_stat_value}")
-    z_stat: Optional[heatmap.ZStat] = None
-    if z_stat_value and zdim:
-        z_stat = {"dim_name": zdim, "stats_func": du.get_zstat_func(z_stat_value)}
 
     # get ons
     xy_ons: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
@@ -383,195 +380,62 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     # disabled bins
     xy_disabled_bins: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
-    print(xy_disabled_bins)
 
     # # Aggregate # #
 
-    class DimControls(TypedDict, total=False):  # pylint:disable=C0115
-        name: str
-        on: bool
-        bins: int
-        is_numerical: bool
-
-    def log_dims(
-        dim_ctrls: List[DimControls],
-        header: str,
-        zipped_dims: Optional[List[DimControls]] = None,
-    ) -> None:
-        if zipped_dims:
-            assert len(dim_ctrls) == len(zipped_dims)
-        for i, dim_ctrl in enumerate(dim_ctrls):
-            log_name = (
-                "<no-update>"
-                if type(dim_ctrl["name"]) == type(no_update)
-                else f"\"{dim_ctrl['name']}\""
-            )
-            logging.info(f"{header}: {log_name}")
-            # logging.info(f"{dim_ctrl}")
-            for key, val in dim_ctrl.items():
-                logging.debug(f"{key}:{val}")
-            if zipped_dims:
-                logging.debug("- - - -")
-                for key, val in zipped_dims[i].items():
-                    logging.debug(f"{key}:{val}")
-
-    def originals(
-        dim_names: List[str],
-        ons: List[bool],
-        bins: List[int],
-        disableds: List[bool],
-        is_x: bool,
-    ) -> List[DimControls]:
-        def is_new_dropdown_value(i: int) -> bool:
-            return bool(du.triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value")
-
-        originals: List[DimControls] = []
-        for i, o in enumerate(zip(dim_names, ons, bins, disableds)):
-            originals.append(
-                {
-                    "name": o[0],
-                    "on": o[1],
-                    "bins": 0 if is_new_dropdown_value(i) else o[2],
-                    "is_numerical": not o[3],
-                }
-            )
-
-        m = re.match(
-            fr"^(?P<updown>up|down)-{'x' if is_x else'y'}-(?P<num_id>\d+)\.n_clicks$",
-            du.triggered(),
-        )
-        if m:
-            num_id = int(m.groupdict()["num_id"])
-            if m.groupdict()["updown"] == "up":
-                originals.insert(num_id - 1, originals.pop(num_id))
-                logging.info(
-                    f"Moving Up {'x' if is_x else'y'} #{num_id} to #{num_id - 1}"
-                )
-            elif m.groupdict()["updown"] == "down":
-                originals.insert(num_id + 1, originals.pop(num_id))
-                logging.info(
-                    f"Moving Down {'x' if is_x else'y'} #{num_id} to #{num_id + 1}"
-                )
-            else:
-                ValueError(f"Could not detect up/down button trigger: {du.triggered()}")
-
-        return originals
-
     # zip & clear each xdims/ydims for ons
-    x_originals = originals(
+    x_from_dash = du.DimControlUtils.from_dash(
         [a for i, a in enumerate(xys) if i % 2 == 0],
         [a for i, a in enumerate(xy_ons) if i % 2 == 0],
         [a for i, a in enumerate(xy_bins) if i % 2 == 0],
         [a for i, a in enumerate(xy_disabled_bins) if i % 2 == 0],
         True,
     )
-    log_dims(x_originals, "Original Selected X-Dimensions")
-    y_originals = originals(
+    du.DimControlUtils.log_dims(x_from_dash, "From_dash Selected X-Dimensions")
+    y_from_dash = du.DimControlUtils.from_dash(
         [a for i, a in enumerate(xys) if i % 2 != 0],
         [a for i, a in enumerate(xy_ons) if i % 2 != 0],
         [a for i, a in enumerate(xy_bins) if i % 2 != 0],
         [a for i, a in enumerate(xy_disabled_bins) if i % 2 != 0],
         False,
     )
-    log_dims(y_originals, "Original Selected Y-Dimensions")
+    du.DimControlUtils.log_dims(y_from_dash, "From_dash Selected Y-Dimensions")
 
     # # DATA TIME # #
 
-    x_incoming = [d for d in deepcopy(x_originals) if d["name"] and d["on"]]
-    log_dims(x_incoming, "Post-Filtered Selected X-Dimensions")
-    y_incoming = [d for d in deepcopy(y_originals) if d["name"] and d["on"]]
-    log_dims(y_incoming, "Post-Filtered Selected Y-Dimensions")
+    x_to_backend = du.DimControlUtils.to_backend(x_from_dash)
+    du.DimControlUtils.log_dims(x_to_backend, "Post-Filtered Selected X-Dimensions")
+    y_to_backend = du.DimControlUtils.to_backend(y_from_dash)
+    du.DimControlUtils.log_dims(y_to_backend, "Post-Filtered Selected Y-Dimensions")
 
     df = du.get_csv_df()
     hmap = heatmap.Heatmap(
         df,
-        [d["name"] for d in x_incoming],
-        [d["name"] for d in y_incoming],
-        z_stat=z_stat,
-        bins={d["name"]: d["bins"] for d in x_incoming + y_incoming if d["bins"]},
+        [d["name"] for d in x_to_backend],
+        [d["name"] for d in y_to_backend],
+        z_stat=du.get_z_stat(z_stat_value, zdim),
+        bins={d["name"]: d["bins"] for d in x_to_backend + y_to_backend if d["bins"]},
     )
 
     # # Transform Heatmap for Front-End # #
 
-    def outgoing(
-        dims_original: List[DimControls],
-        dim_heatmap: List[dimensions.Dim],
-        dims_incoming: List[DimControls],
-    ) -> Iterator[DimControls]:
-        i = -1
-        for dim_ctrl in dims_original:
-            # Was this data even heatmapped?
-            if dim_ctrl not in dims_incoming:
-                if not dim_ctrl["name"]:
-                    yield {
-                        "name": dim_ctrl["name"],
-                        "on": True,  # reset empty dim to on
-                        "bins": 0,  # reset empty dim to 0
-                        "is_numerical": dim_ctrl["is_numerical"],
-                    }
-                elif not dim_ctrl["bins"]:
-                    yield {
-                        "name": dim_ctrl["name"],
-                        "on": dim_ctrl["on"],
-                        "bins": dim_ctrl["bins"],
-                        "is_numerical": dim_ctrl["is_numerical"],
-                    }
-                else:
-                    raise ValueError(
-                        f"Dim Control was excluded for unknown reason: {dim_ctrl}"
-                    )
-                continue
-            # Update if heatmap overrode values
-            i += 1
-            yield {
-                "name": dim_ctrl["name"],
-                "on": dim_ctrl["on"],
-                # always return bins b/c might be overridden
-                "bins": len(dim_heatmap[i].catbins),
-                "is_numerical": dim_heatmap[i].is_numerical,
-            }
-
-    x_outgoing = list(outgoing(x_originals, hmap.x_dims, x_incoming))
-    log_dims(x_outgoing, "Outgoing X-Dimensions (vs Originals)", x_originals)
-    y_outgoing = list(outgoing(y_originals, hmap.y_dims, y_incoming))
-    log_dims(y_outgoing, "Outgoing Y-Dimensions (vs Originals)", y_originals)
-
-    xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
-    ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
-
-    def make_hover(brick: heatmap.HeatBrick) -> str:
-        string = f"{brick['z']} <br>"
-        for (key, val), low in zip(brick["intersection"].items(), ys_bin0 + xs_bin0):
-            #  (left, right]
-            print(low)
-            if isinstance(val, pd.Interval):
-                bracket, left = "(", val.left
-                if val == low:
-                    bracket, left = "[", df[key].min()
-                string += f"{key}: {bracket}{left:.2f}, {val.right:.2f}] <br>"
-            else:
-                string += f"{key}: {val} <br>"
-        return string
-
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=[[brick["z"] for brick in row] for row in hmap.heatmap],
-            # x=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-            # y=["Morning", "Afternoon", "Evening"],
-            # hoverongaps=False,
-            hoverinfo="text",
-            text=[[make_hover(brick) for brick in row] for row in hmap.heatmap],
-        )
+    x_to_dash = list(du.DimControlUtils.to_dash(x_from_dash, hmap.x_dims, x_to_backend))
+    du.DimControlUtils.log_dims(
+        x_to_dash, "To_dash X-Dimensions (vs From_dash)", x_from_dash
+    )
+    y_to_dash = list(du.DimControlUtils.to_dash(y_from_dash, hmap.y_dims, y_to_backend))
+    du.DimControlUtils.log_dims(
+        y_to_dash, "To_dash Y-Dimensions (vs From_dash)", y_from_dash
     )
 
     return tuple(
-        [fig]
-        + [x["name"] for x in x_outgoing]
-        + [x["bins"] for x in x_outgoing]  # bin value
-        + [not x["is_numerical"] for x in x_outgoing]  # bin disabled
-        + [du.slider_handle_label(x["is_numerical"]) for x in x_outgoing]
-        + [y["name"] for y in y_outgoing]
-        + [y["bins"] for y in y_outgoing]  # bin value
-        + [not y["is_numerical"] for y in y_outgoing]  # bin disabled
-        + [du.slider_handle_label(y["is_numerical"]) for y in y_outgoing]
+        [du.DimControlUtils.make_fig(hmap, df)]
+        + [x["name"] for x in x_to_dash]
+        + [x["bins"] for x in x_to_dash]  # bin value
+        + [not x["is_numerical"] for x in x_to_dash]  # bin disabled
+        + [du.slider_handle_label(x["is_numerical"]) for x in x_to_dash]
+        + [y["name"] for y in y_to_dash]
+        + [y["bins"] for y in y_to_dash]  # bin value
+        + [not y["is_numerical"] for y in y_to_dash]  # bin disabled
+        + [du.slider_handle_label(y["is_numerical"]) for y in y_to_dash]
     )
