@@ -126,14 +126,14 @@ class DimControlUtils:
         disableds: List[bool],
         is_x: bool,
     ) -> List[DimControls]:
-        """Get the original list with augmenting as needed."""
+        """Get the from_dash list with augmenting as needed."""
 
         def is_new_dropdown_value(i: int) -> bool:
             return bool(triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value")
 
-        originals: List[DimControls] = []
+        from_dash: List[DimControls] = []
         for i, zipped in enumerate(zip(dim_names, ons, bins, disableds)):
-            originals.append(
+            from_dash.append(
                 {
                     "name": zipped[0],
                     "on": zipped[1],
@@ -149,36 +149,36 @@ class DimControlUtils:
         if m:
             num_id = int(m.groupdict()["num_id"])
             if m.groupdict()["updown"] == "up":
-                originals.insert(num_id - 1, originals.pop(num_id))
+                from_dash.insert(num_id - 1, from_dash.pop(num_id))
                 logging.info(
                     f"Moving Up {'x' if is_x else'y'} #{num_id} to #{num_id - 1}"
                 )
             elif m.groupdict()["updown"] == "down":
-                originals.insert(num_id + 1, originals.pop(num_id))
+                from_dash.insert(num_id + 1, from_dash.pop(num_id))
                 logging.info(
                     f"Moving Down {'x' if is_x else'y'} #{num_id} to #{num_id + 1}"
                 )
             else:
                 ValueError(f"Could not detect up/down button trigger: {triggered()}")
 
-        return originals
+        return from_dash
 
     @staticmethod
     def to_backend(
-        dims_original: List[DimControls],
+        dims_from_dash: List[DimControls],
     ) -> List[DimControls]:
         """Get the to_backend list for Dash."""
-        return [d for d in deepcopy(dims_original) if d["name"] and d["on"]]
+        return [d for d in deepcopy(dims_from_dash) if d["name"] and d["on"]]
 
     @staticmethod
     def to_dash(
-        dims_original: List[DimControls],
+        dims_from_dash: List[DimControls],
         dim_heatmap: List[dimensions.Dim],
         dims_to_backend: List[DimControls],
     ) -> Iterator[DimControls]:
-        """Get the outgoing list for Dash."""
+        """Get the to_dash list for Dash."""
         i = -1
-        for dim_ctrl in dims_original:
+        for dim_ctrl in dims_from_dash:
             # Was this data even heatmapped?
             if dim_ctrl not in dims_to_backend:
                 if not dim_ctrl["name"]:
