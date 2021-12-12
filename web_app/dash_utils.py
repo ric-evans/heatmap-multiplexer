@@ -206,29 +206,36 @@ class DimControlUtils:
         xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
         ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
 
-        def make_hover(brick: backend.heatmap.HeatBrick) -> str:
-            string = f"{brick['z']} <br>"
-            for (key, val), low in zip(
-                brick["intersection"].items(), ys_bin0 + xs_bin0
-            ):
+        def stringer(brick: backend.heatmap.HeatBrick, only: str = "") -> List[str]:
+            strings = []
+            for hb_inter, bin0 in zip(brick["intersection"], ys_bin0 + xs_bin0):
+                if only == "x" and not hb_inter["is_x"]:
+                    continue
+                elif only == "y" and hb_inter["is_x"]:
+                    continue
                 #  (left, right]
-                if isinstance(val, pd.Interval):
-                    bracket, left = "(", val.left
-                    if val == low:
-                        bracket, left = "[", df[key].min()
-                    string += f"{key}: {bracket}{left:.2f}, {val.right:.2f}] <br>"
+                if isinstance(hb_inter["catbin"], pd.Interval):
+                    bracket, left = "(", hb_inter["catbin"].left
+                    if hb_inter["catbin"] == bin0:
+                        bracket, left = "[", df[hb_inter["name"]].min()
+                    strings.append(
+                        f"{hb_inter['name']}: {bracket}{left:5.2f}, {hb_inter['catbin'].right:5.2f}]"
+                    )
                 else:
-                    string += f"{key}: {val} <br>"
-            return string
+                    strings.append(f"{hb_inter['name']}:{hb_inter['catbin']}")
+            return strings
 
         fig = go.Figure(
             data=go.Heatmap(
                 z=[[brick["z"] for brick in row] for row in hmap.heatmap],
-                # x=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-                # y=["Morning", "Afternoon", "Evening"],
+                x=[" | ".join(stringer(col, "x")) for col in hmap.heatmap[0]],
+                y=[" | ".join(stringer(row[0], "y")) for row in hmap.heatmap],
                 # hoverongaps=False,
                 hoverinfo="text",
-                text=[[make_hover(brick) for brick in row] for row in hmap.heatmap],
+                text=[
+                    ["<br>".join([str(brick["z"])] + stringer(brick)) for brick in row]
+                    for row in hmap.heatmap
+                ],
             )
         )
 

@@ -26,7 +26,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                     daq.Slider(
                         id=f"bin-slider-{xy_str.lower()}-{num_id}",
                         min=2,  # the bin defaulting algo is only defined >=2
-                        max=10,
+                        max=12,
                         value=0,
                         handleLabel=du.slider_handle_label(True),
                         step=1,

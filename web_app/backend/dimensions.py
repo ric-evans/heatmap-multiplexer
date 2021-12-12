@@ -4,7 +4,7 @@
 import logging
 import math
 from copy import deepcopy
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, TypedDict, Union
 
 import numpy as np  # type: ignore[import]
 import pandas as pd  # type: ignore[import]
@@ -72,15 +72,17 @@ class Dim:
 class DimSelection:
     """A pairing of a Dim and a category/bin."""
 
-    def __init__(self, dim: Dim, catbin: CatBin) -> None:
+    def __init__(self, dim: Dim, catbin: CatBin, is_x: bool) -> None:
         self.dim = dim
         self.catbin = catbin
+        self.is_x = is_x
 
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, DimSelection)
             and self.dim == other.dim
             and self.catbin == other.catbin
+            and self.is_x == other.is_x
         )
 
     def get_pandas_query(self) -> str:
@@ -92,6 +94,10 @@ class DimSelection:
             )
 
         return f'{self.dim.name} == "{self.catbin}"'
+
+    def __repr__(self) -> str:
+        """Get repr string."""
+        return f"DimSelection({self.dim=}, {self.catbin=}, {self.is_x=})"
 
 
 class Intersection:
@@ -132,12 +138,16 @@ class IntersectionMatrix:
         self.matrix = self._build(x_dims, y_dims)
 
     @staticmethod
-    def _build_list(dims: List[Dim]) -> List[Intersection]:
+    def _build_list(x_dims: List[Dim], y_dims: List[Dim]) -> List[Intersection]:
         """Build out the 1D Intersection list."""
         the_list: List[Intersection] = []
 
+        class DimXY(TypedDict):  # pylint:disable=missing-class-docstring
+            dim: Dim
+            is_x: bool
+
         def _recurse_build(
-            dims_togo: List[Dim],
+            dims_togo: List[DimXY],
             unfinished_intersection: Optional[Intersection] = None,
         ) -> None:
             if not unfinished_intersection:
@@ -148,15 +158,17 @@ class IntersectionMatrix:
                 the_list.append(unfinished_intersection)
                 return
 
-            for catbin in dims_togo[0].catbins:
+            for catbin in dims_togo[0]["dim"].catbins:
                 _recurse_build(
                     dims_togo[1:],
                     unfinished_intersection.deepcopy_add_dimselection(
-                        DimSelection(dims_togo[0], catbin)
+                        DimSelection(dims_togo[0]["dim"], catbin, dims_togo[0]["is_x"])
                     ),
                 )
 
-        _recurse_build(dims)
+        y_dimxys: List[DimXY] = [{"dim": d, "is_x": False} for d in y_dims]
+        x_dimxys: List[DimXY] = [{"dim": d, "is_x": True} for d in x_dims]
+        _recurse_build(y_dimxys + x_dimxys)
         return the_list
 
     @staticmethod
@@ -176,7 +188,7 @@ class IntersectionMatrix:
             [Intersection() for x in x_range] for y in y_range
         ]
 
-        for intersection in IntersectionMatrix._build_list(y_dims + x_dims):
+        for intersection in IntersectionMatrix._build_list(x_dims, y_dims):
             if x == len(matrix[0]):
                 x = 0
                 y += 1

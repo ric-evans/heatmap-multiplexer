@@ -4,12 +4,15 @@ import sys
 from typing import List
 
 sys.path.append(".")
-from web_app.dimensions import (  # noqa: E402
+from web_app.backend.dimensions import (  # noqa: E402
     Dim,
     DimSelection,
     Intersection,
     IntersectionMatrix,
 )
+
+XXX = True
+YYY = False
 
 
 def test_00_intersection_matrix_null() -> None:
@@ -26,12 +29,36 @@ def test_01_intersection_matrix_no_x() -> None:
     b = Dim("B", ["B0", "B1", "B2"])
 
     matrix = [
-        [Intersection([DimSelection(a, a.catbins[0]), DimSelection(b, b.catbins[0])])],
-        [Intersection([DimSelection(a, a.catbins[0]), DimSelection(b, b.catbins[1])])],
-        [Intersection([DimSelection(a, a.catbins[0]), DimSelection(b, b.catbins[2])])],
-        [Intersection([DimSelection(a, a.catbins[1]), DimSelection(b, b.catbins[0])])],
-        [Intersection([DimSelection(a, a.catbins[1]), DimSelection(b, b.catbins[1])])],
-        [Intersection([DimSelection(a, a.catbins[1]), DimSelection(b, b.catbins[2])])],
+        [
+            Intersection(
+                [DimSelection(a, a.catbins[0], YYY), DimSelection(b, b.catbins[0], YYY)]
+            )
+        ],
+        [
+            Intersection(
+                [DimSelection(a, a.catbins[0], YYY), DimSelection(b, b.catbins[1], YYY)]
+            )
+        ],
+        [
+            Intersection(
+                [DimSelection(a, a.catbins[0], YYY), DimSelection(b, b.catbins[2], YYY)]
+            )
+        ],
+        [
+            Intersection(
+                [DimSelection(a, a.catbins[1], YYY), DimSelection(b, b.catbins[0], YYY)]
+            )
+        ],
+        [
+            Intersection(
+                [DimSelection(a, a.catbins[1], YYY), DimSelection(b, b.catbins[1], YYY)]
+            )
+        ],
+        [
+            Intersection(
+                [DimSelection(a, a.catbins[1], YYY), DimSelection(b, b.catbins[2], YYY)]
+            )
+        ],
     ]
 
     assert IntersectionMatrix([], [a, b]).matrix == matrix
@@ -48,28 +75,28 @@ def test_02_intersection_matrix_no_y() -> None:
     matrix = [
         [
             Intersection(
-                [DimSelection(c, c.catbins[0]), DimSelection(d, d.catbins[0])]
+                [DimSelection(c, c.catbins[0], XXX), DimSelection(d, d.catbins[0], XXX)]
             ),
             Intersection(
-                [DimSelection(c, c.catbins[0]), DimSelection(d, d.catbins[1])]
+                [DimSelection(c, c.catbins[0], XXX), DimSelection(d, d.catbins[1], XXX)]
             ),
             Intersection(
-                [DimSelection(c, c.catbins[1]), DimSelection(d, d.catbins[0])]
+                [DimSelection(c, c.catbins[1], XXX), DimSelection(d, d.catbins[0], XXX)]
             ),
             Intersection(
-                [DimSelection(c, c.catbins[1]), DimSelection(d, d.catbins[1])]
+                [DimSelection(c, c.catbins[1], XXX), DimSelection(d, d.catbins[1], XXX)]
             ),
             Intersection(
-                [DimSelection(c, c.catbins[2]), DimSelection(d, d.catbins[0])]
+                [DimSelection(c, c.catbins[2], XXX), DimSelection(d, d.catbins[0], XXX)]
             ),
             Intersection(
-                [DimSelection(c, c.catbins[2]), DimSelection(d, d.catbins[1])]
+                [DimSelection(c, c.catbins[2], XXX), DimSelection(d, d.catbins[1], XXX)]
             ),
             Intersection(
-                [DimSelection(c, c.catbins[3]), DimSelection(d, d.catbins[0])]
+                [DimSelection(c, c.catbins[3], XXX), DimSelection(d, d.catbins[0], XXX)]
             ),
             Intersection(
-                [DimSelection(c, c.catbins[3]), DimSelection(d, d.catbins[1])]
+                [DimSelection(c, c.catbins[3], XXX), DimSelection(d, d.catbins[1], XXX)]
             ),
         ]
     ]
@@ -91,96 +118,96 @@ def test_03_intersection_matrix_1d_x() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
-                ]
-            ),
-        ],
-        [
-            Intersection(
-                [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
-                ]
-            ),
-            Intersection(
-                [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
-                ]
-            ),
-        ],
-        [
-            Intersection(
-                [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
-                ]
-            ),
-            Intersection(
-                [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(d, d.catbins[1], XXX),
+                ]
+            ),
+        ],
+        [
+            Intersection(
+                [
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(d, d.catbins[0], XXX),
+                ]
+            ),
+            Intersection(
+                [
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(d, d.catbins[1], XXX),
+                ]
+            ),
+        ],
+        [
+            Intersection(
+                [
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(d, d.catbins[0], XXX),
+                ]
+            ),
+            Intersection(
+                [
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
@@ -203,116 +230,116 @@ def test_04_intersection_matrix_1d_y() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
@@ -333,30 +360,30 @@ def test_05_intersection_matrix_1d_x_1d_y_vanilla_heatmap() -> None:
     matrix = [
         [
             Intersection(
-                [DimSelection(a, a.catbins[0]), DimSelection(c, c.catbins[0])]
+                [DimSelection(a, a.catbins[0], YYY), DimSelection(c, c.catbins[0], XXX)]
             ),
             Intersection(
-                [DimSelection(a, a.catbins[0]), DimSelection(c, c.catbins[1])]
+                [DimSelection(a, a.catbins[0], YYY), DimSelection(c, c.catbins[1], XXX)]
             ),
             Intersection(
-                [DimSelection(a, a.catbins[0]), DimSelection(c, c.catbins[2])]
+                [DimSelection(a, a.catbins[0], YYY), DimSelection(c, c.catbins[2], XXX)]
             ),
             Intersection(
-                [DimSelection(a, a.catbins[0]), DimSelection(c, c.catbins[3])]
+                [DimSelection(a, a.catbins[0], YYY), DimSelection(c, c.catbins[3], XXX)]
             ),
         ],
         [
             Intersection(
-                [DimSelection(a, a.catbins[1]), DimSelection(c, c.catbins[0])]
+                [DimSelection(a, a.catbins[1], YYY), DimSelection(c, c.catbins[0], XXX)]
             ),
             Intersection(
-                [DimSelection(a, a.catbins[1]), DimSelection(c, c.catbins[1])]
+                [DimSelection(a, a.catbins[1], YYY), DimSelection(c, c.catbins[1], XXX)]
             ),
             Intersection(
-                [DimSelection(a, a.catbins[1]), DimSelection(c, c.catbins[2])]
+                [DimSelection(a, a.catbins[1], YYY), DimSelection(c, c.catbins[2], XXX)]
             ),
             Intersection(
-                [DimSelection(a, a.catbins[1]), DimSelection(c, c.catbins[3])]
+                [DimSelection(a, a.catbins[1], YYY), DimSelection(c, c.catbins[3], XXX)]
             ),
         ],
     ]
@@ -382,66 +409,66 @@ def test_06_intersection_matrix_multi_x_multi_y() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
@@ -449,66 +476,66 @@ def test_06_intersection_matrix_multi_x_multi_y() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
@@ -516,66 +543,66 @@ def test_06_intersection_matrix_multi_x_multi_y() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[0]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[0], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
@@ -584,66 +611,66 @@ def test_06_intersection_matrix_multi_x_multi_y() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[0]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[0], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
@@ -651,66 +678,66 @@ def test_06_intersection_matrix_multi_x_multi_y() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[1]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[1], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],
@@ -718,66 +745,66 @@ def test_06_intersection_matrix_multi_x_multi_y() -> None:
         [
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[0]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[0], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[1]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[1], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[2]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[2], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[0]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[0], XXX),
                 ]
             ),
             Intersection(
                 [
-                    DimSelection(a, a.catbins[1]),
-                    DimSelection(b, b.catbins[2]),
-                    DimSelection(c, c.catbins[3]),
-                    DimSelection(d, d.catbins[1]),
+                    DimSelection(a, a.catbins[1], YYY),
+                    DimSelection(b, b.catbins[2], YYY),
+                    DimSelection(c, c.catbins[3], XXX),
+                    DimSelection(d, d.catbins[1], XXX),
                 ]
             ),
         ],

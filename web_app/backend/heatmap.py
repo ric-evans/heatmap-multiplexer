@@ -7,16 +7,24 @@ from typing import Callable, Dict, List, Optional, TypedDict
 
 import pandas as pd  # type: ignore[import]
 
-from .dimensions import Dim, Intersection, IntersectionMatrix
+from .dimensions import CatBin, Dim, Intersection, IntersectionMatrix
 
 StatFunc = Callable[[List[float]], float]
+
+
+class HeatBrickIntersection(TypedDict):
+    """Wrap Heat Brick intersection."""
+
+    name: str
+    catbin: CatBin
+    is_x: bool
 
 
 class HeatBrick(TypedDict):
     """Wrap a single Heatmap datum/element/brick."""
 
     z: Optional[float]
-    intersection: Dict[str, str]
+    intersection: List[HeatBrickIntersection]
 
 
 class ZStat(TypedDict):
@@ -73,7 +81,10 @@ class Heatmap:
 
             return {
                 "z": z,
-                "intersection": {ds.dim.name: ds.catbin for ds in inter.dimselections},
+                "intersection": [
+                    {"name": ds.dim.name, "catbin": ds.catbin, "is_x": ds.is_x}
+                    for ds in inter.dimselections
+                ],
             }
 
         return [
