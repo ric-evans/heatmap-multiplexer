@@ -13,7 +13,7 @@ import plotly.graph_objects as go  # type: ignore[import]
 from dash import callback_context, no_update  # type: ignore
 
 from . import backend
-from .config import CSV, CSV_BACKUP, NDIMS
+from .config import CSV, CSV_BACKUP
 
 
 @enum.unique
@@ -87,7 +87,9 @@ def get_z_stat(z_stat_value: int, zdim: str) -> Optional[backend.heatmap.ZStat]:
     return None
 
 
-class DimControls(TypedDict, total=False):  # pylint:disable=C0115
+class DimControls(TypedDict):
+    """Wraps dimension-related components that are grouped in the front-end."""
+
     name: str
     on: bool
     bins: int
@@ -110,7 +112,7 @@ class DimControlUtils:
         for i, dim_ctrl in enumerate(dim_ctrls):
             log_name = (
                 "<no-update>"
-                if type(dim_ctrl["name"]) == type(no_update)
+                if isinstance(dim_ctrl["name"], type(no_update))
                 else f"\"{dim_ctrl['name']}\""
             )
             logging.info(f"{header}: {log_name}")

@@ -29,7 +29,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                         children=[
                             dbc.Col(
                                 style={"align-self": "flex-end"},
-                                children=daq.Slider(
+                                children=daq.Slider(  # pylint:disable=not-callable
                                     id=f"bin-slider-{xy_str.lower()}-{num_id}",
                                     min=2,  # the bin defaulting algo is only defined >=2
                                     max=20,
@@ -65,8 +65,6 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                                 "value": du.BinRadioOptions.RESET.value,
                                             },
                                             {
-                                                #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
-                                                #  start at top & decrease, until about equal with default #bins
                                                 "label": "smart bins",
                                                 "value": du.BinRadioOptions.TENPOW.value,
                                             },
@@ -91,7 +89,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
             dbc.Col(
                 # align="start",
                 # width=1,
-                children=daq.BooleanSwitch(
+                children=daq.BooleanSwitch(  # pylint:disable=not-callable
                     id=f"hide-switch-{xy_str.lower()}-{num_id}",
                     on=True,
                     label={"label": "Visible", "style": {"margin-bottom": 0}},
@@ -370,9 +368,9 @@ def upload_csv(contents: str) -> Tuple[Union[List[Dict[str, str]], str]]:
     ]
 
     if du.triggered() == "wbs-upload-xlsx.contents":
-        return tuple([du.no_update] * ((NDIMS * 2) + 1) + ["location.reload();"])
+        return tuple([du.no_update] * ((NDIMS * 2) + 1) + ["location.reload();"])  # type: ignore[return-value]
     else:
-        return tuple([options] * ((NDIMS * 2) + 1) + [du.no_update])
+        return tuple([options] * ((NDIMS * 2) + 1) + [du.no_update])  # type: ignore[return-value]
 
 
 @app.callback(  # type: ignore[misc]
