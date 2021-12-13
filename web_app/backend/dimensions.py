@@ -49,17 +49,19 @@ class Dim:
                 return math.isnan(val)
             return False
 
-        def get_sturges() -> int:
-            """use Sturges’ Rule"""
+        def sturges_rule() -> int:
+            """Use Sturges’ Rule"""
             return int(np.ceil(np.log2(len(df[name])) + 1))
 
-        def get_default() -> List[pd.Interval]:
-            sturges = get_sturges()
+        def get_cut(num: int) -> List[pd.Interval]:
+            # print(max(values))
+            # print(min(values))
             return list(
                 pd.cut(
-                    np.linspace(min(values), max(values), num=sturges),
-                    sturges,
+                    np.linspace(min(values), max(values), num=num),
+                    num,
                     include_lowest=True,
+                    right=False,
                 )
             )
 
@@ -67,20 +69,17 @@ class Dim:
             return np.abs(one - two)  # type: ignore[no-any-return]
 
         def get_10pow() -> List[pd.Interval]:
-            sturges = get_sturges()
+            sturges = sturges_rule()
             # get starting power by rounding up "largest" value to nearest power of 10
             largest_value = max(np.abs(max(values)), np.abs(min(values)))
             power = int(np.ceil(np.log10(largest_value)))
             prev = None
             for power_offset in range(10):
                 width = 10 ** (power - power_offset)
-                end_offset = width
-                # if int(max(values) / width) == max(values) / width:
-                #     end_offset = 0
                 temp = list(
                     pd.interval_range(
-                        start=min(values),
-                        end=max(values) + end_offset,
+                        start=(min(values) // width) * width,  # 5278 -> 5000
+                        end=max(values) + width,  # 6001 -> 7000
                         freq=width,
                         closed="left",
                     )
@@ -89,23 +88,17 @@ class Dim:
                 if prev and dist(len(temp), sturges) > dist(len(prev), sturges):
                     return prev
                 prev = temp
-            return get_default()  # if this all fails for some reason, just use default
+            return get_cut(sturges)  # if this all fails for some reason
 
         # get a sorted unique list w/o nan values
         values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
         if isinstance(values[0], (float, int)):
             if not num_bins:
-                catbins = get_default()
+                catbins = get_cut(sturges_rule())
             elif num_bins == -1:
                 catbins = get_10pow()
             else:
-                catbins = list(
-                    pd.cut(
-                        np.linspace(min(values), max(values), num=num_bins),
-                        num_bins,
-                        include_lowest=True,
-                    )
-                )
+                catbins = get_cut(num_bins)
         else:
             catbins = values
 

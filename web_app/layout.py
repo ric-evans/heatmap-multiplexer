@@ -40,8 +40,6 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                     labelPosition="bottom",
                                 ),
                             ),
-                            #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
-                            #  start at top & decrease, until about equal with default #bins
                             dbc.Col(
                                 style={"width": f"{(bin_btns_sum_width / 2)}rem"},
                                 children=dbc.Button(
@@ -50,6 +48,8 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                     children="ideal",
                                 ),
                             ),
+                            #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
+                            #  start at top & decrease, until about equal with default #bins
                             dbc.Col(
                                 style={"width": f"{(bin_btns_sum_width / 2)}rem"},
                                 children=dbc.Button(

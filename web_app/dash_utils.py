@@ -225,7 +225,8 @@ class DimControlUtils:
                     continue
                 #  Ex: (left, right]
                 if isinstance(hb_inter["catbin"], pd.Interval):
-                    if hb_inter["catbin"] == bin0:  # set the lowest bound to the min
+                    # set the lowest bound to the min
+                    if hb_inter["catbin"].open_left and hb_inter["catbin"] == bin0:
                         l_brac = "["
                         left = df[hb_inter["name"]].min()
                     else:
