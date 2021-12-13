@@ -50,7 +50,7 @@ class Dim:
             return False
 
         def sturges_rule() -> int:
-            """Use Sturges’ Rule"""
+            """Use Sturges’ Rule, calculated by cardinality of set."""
             return int(np.ceil(np.log2(len(df[name])) + 1))
 
         def get_cut(num: int) -> List[pd.Interval]:
@@ -65,16 +65,19 @@ class Dim:
                 )
             )
 
-        def dist(one: int, two: int) -> int:
-            return np.abs(one - two)  # type: ignore[no-any-return]
+        def dist(one: int, two: int) -> float:
+            """Get the "distance" between the two, calculated by degree of similarity."""
+            return max(one, two) / min(one, two)
+            # return np.abs(one - two)  # type: ignore[no-any-return]
 
         def get_10pow() -> List[pd.Interval]:
+            logging.info(f"10^N Binning ({name})...")
             sturges = sturges_rule()
             # get starting power by rounding up "largest" value to nearest power of 10
             largest_value = max(np.abs(max(values)), np.abs(min(values)))
             power = int(np.ceil(np.log10(largest_value)))
             prev = None
-            for power_offset in range(10):
+            for power_offset in range(7):  # 7; think: low-range high-value; 2000, 2001
                 width = 10 ** (power - power_offset)
                 temp = list(
                     pd.interval_range(
@@ -84,6 +87,7 @@ class Dim:
                         closed="left",
                     )
                 )
+                logging.debug(f"{sturges} vs {len(temp)} ({dist(len(temp), sturges)})")
                 # if new dist is now greater than last, use last
                 if prev and dist(len(temp), sturges) > dist(len(prev), sturges):
                     return prev
