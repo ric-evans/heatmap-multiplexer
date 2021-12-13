@@ -239,17 +239,24 @@ class DimControlUtils:
         """Make go.Figure with the heatmap."""
         xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
         ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
+        # detect if 10^N (smart binning)
+        ys_bin_10pow = [d.is_10pow for d in hmap.y_dims]
+        xs_bin_10pow = [d.is_10pow for d in hmap.x_dims]
 
-        def stringer(brick: backend.heatmap.HeatBrick, only: str = "") -> List[str]:
+        def stringer(
+            brick: backend.heatmap.HeatBrick, only: str = "", short: bool = False
+        ) -> List[str]:
             strings = []
-            for hb_inter, bin0 in zip(brick["intersection"], ys_bin0 + xs_bin0):
+            for hb_inter, bin0, tenpow in zip(
+                brick["intersection"], ys_bin0 + xs_bin0, ys_bin_10pow + xs_bin_10pow
+            ):
                 if only == "x" and not hb_inter["is_x"]:
                     continue
                 elif only == "y" and hb_inter["is_x"]:
                     continue
                 #  Ex: (left, right]
                 if isinstance(hb_inter["catbin"], pd.Interval):
-                    # set the lowest bound to the min
+                    # set the lowest bound to the min for open-lefts
                     if hb_inter["catbin"].open_left and hb_inter["catbin"] == bin0:
                         l_brac = "["
                         left = df[hb_inter["name"]].min()
@@ -258,9 +265,19 @@ class DimControlUtils:
                         left = hb_inter["catbin"].left
                     r_brac = "]" if hb_inter["catbin"].closed_right else ")"
                     right = hb_inter["catbin"].right
-                    strings.append(
-                        f"{hb_inter['name']}:{l_brac}{left:5.2f}, {right:5.2f}{r_brac}"
-                    )
+
+                    if short:
+                        if l_brac == "[" and r_brac == ")":
+                            # if tenpow:
+                            #     strings.append(f"{hb_inter['name']}:{left}s")
+                            # else:
+                            strings.append(f"{hb_inter['name']}:{left}+")
+                        else:
+                            strings.append(f"{hb_inter['name']}:{left}-{right}")
+                    else:
+                        strings.append(
+                            f"{hb_inter['name']}:{l_brac}{left:5.2f}, {right:5.2f}{r_brac}"
+                        )
                 else:
                     strings.append(f"{hb_inter['name']}:{hb_inter['catbin']}")
             return strings
@@ -268,8 +285,14 @@ class DimControlUtils:
         fig = go.Figure(
             data=go.Heatmap(
                 z=[[brick["z"] for brick in row] for row in hmap.heatmap],
-                x=[" | ".join(stringer(col, "x")) for col in hmap.heatmap[0]],
-                y=[" | ".join(stringer(row[0], "y")) for row in hmap.heatmap],
+                x=[
+                    " | ".join(stringer(col, "x", short=True))
+                    for col in hmap.heatmap[0]
+                ],
+                y=[
+                    " | ".join(stringer(row[0], "y", short=True))
+                    for row in hmap.heatmap
+                ],
                 # hoverongaps=False,
                 hoverinfo="text",
                 text=[

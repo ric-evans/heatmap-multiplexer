@@ -15,9 +15,12 @@ CatBin = Union[str, pd.Interval]
 class Dim:
     """Wraps a single dimension's metadata."""
 
-    def __init__(self, name: str, catbins: List[CatBin]) -> None:
+    def __init__(
+        self, name: str, catbins: List[CatBin], is_10pow: bool = False
+    ) -> None:
         self.catbins = catbins
         self.name = name
+        self.is_10pow = is_10pow
 
         if all(isinstance(c, pd.Interval) for c in catbins):
             self.is_numerical = True
@@ -41,6 +44,7 @@ class Dim:
         name: str, df: pd.DataFrame, num_bins: Optional[int] = None
     ) -> "Dim":
         """Factory from a pandas dataframe."""
+        is_10pow = False
 
         def is_nullish(val: Any) -> bool:
             if isinstance(val, str):
@@ -92,7 +96,7 @@ class Dim:
                 if prev and dist(len(temp), sturges) > dist(len(prev), sturges):
                     return prev
                 prev = temp
-            return get_cut(sturges)  # if this all fails for some reason
+            return get_cut(sturges)  # if this algo fails for some reason
 
         # get a sorted unique list w/o nan values
         values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
@@ -101,13 +105,14 @@ class Dim:
                 catbins = get_cut(sturges_rule())
             elif num_bins == -1:
                 catbins = get_10pow()
+                is_10pow = True  # only mark true if this algo works
             else:
                 catbins = get_cut(num_bins)
         else:
             catbins = values
 
         logging.info(f"Cat-Bins: {catbins}")
-        return Dim(name, catbins)
+        return Dim(name, catbins, is_10pow)
 
 
 class DimSelection:
