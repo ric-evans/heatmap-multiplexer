@@ -6,7 +6,7 @@ import logging
 import re
 import statistics as st
 from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional, TypedDict, cast
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypedDict, cast
 
 import pandas as pd  # type: ignore[import]
 import plotly.graph_objects as go  # type: ignore[import]
@@ -16,6 +16,7 @@ from . import backend
 from .config import CSV, CSV_BACKUP, NDIMS
 
 
+@enum.unique
 class StatsRadioOptions(enum.Enum):
     """Stores option values for the "statistics" radio buttons."""
 
@@ -28,6 +29,15 @@ class StatsRadioOptions(enum.Enum):
     MODE = 6
     MEAN = 7
     STD_DEV = 8
+
+
+@enum.unique
+class BinRadioOptions(enum.Enum):
+    """Stores option values for the bin radio buttons."""
+
+    NO_RADIO_SELECT = 0
+    DEFAULT = 1
+    TENPOW = 2
 
 
 def triggered() -> str:
@@ -81,6 +91,7 @@ class DimControls(TypedDict, total=False):  # pylint:disable=C0115
     on: bool
     bins: int
     is_numerical: bool
+    bin_radio: int
 
 
 class DimControlUtils:
@@ -116,31 +127,36 @@ class DimControlUtils:
         ons: List[bool],
         bins: List[int],
         disableds: List[bool],
+        bin_radios: List[int],
         is_x: bool,
     ) -> List[DimControls]:
         """Get the from_dash list with augmenting as needed."""
 
-        def get_bin(i: int, value: int) -> int:
+        def get_bin(i: int, b_val: int, radio: int) -> Tuple[int, int]:
             # is new dropdown value?
             if triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value":
-                return 0
+                return 0, BinRadioOptions.DEFAULT.value
+            elif triggered() == f"bin-slider-{'x' if is_x else'y'}-{i}.value":
+                return b_val, BinRadioOptions.NO_RADIO_SELECT.value
             # clicked default button?
-            elif triggered() == f"bin-default-{'x' if is_x else'y'}-{i}.n_clicks":
-                return 0
+            elif radio == BinRadioOptions.DEFAULT.value:
+                return 0, radio
             # clicked 10^n button?
-            elif triggered() == f"bin-10^n-{'x' if is_x else'y'}-{i}.n_clicks":
-                return -1
+            elif radio == BinRadioOptions.TENPOW.value:
+                return -1, radio
             else:
-                return value
+                return b_val, radio
 
         from_dash: List[DimControls] = []
-        for i, zipped in enumerate(zip(names, ons, bins, disableds)):
+        for i, zipped in enumerate(zip(names, ons, bins, disableds, bin_radios)):
+            bins_val, radio_val = get_bin(i, zipped[2], zipped[4])
             from_dash.append(
                 {
                     "name": zipped[0],
                     "on": zipped[1],
-                    "bins": get_bin(i, zipped[2]),
+                    "bins": bins_val,
                     "is_numerical": not zipped[3],
+                    "bin_radio": radio_val,
                 }
             )
 
@@ -187,6 +203,7 @@ class DimControlUtils:
                         "on": True,  # reset empty dim to on
                         "bins": 0,  # reset empty dim to 0
                         "is_numerical": dim_ctrl["is_numerical"],
+                        "bin_radio": dim_ctrl["bin_radio"],
                     }
                 elif not dim_ctrl["on"]:
                     yield {
@@ -194,6 +211,7 @@ class DimControlUtils:
                         "on": dim_ctrl["on"],
                         "bins": dim_ctrl["bins"],
                         "is_numerical": dim_ctrl["is_numerical"],
+                        "bin_radio": dim_ctrl["bin_radio"],
                     }
                 else:
                     raise ValueError(
@@ -208,6 +226,7 @@ class DimControlUtils:
                 # always return bins b/c might be overridden
                 "bins": len(dim_heatmap[i].catbins),
                 "is_numerical": dim_heatmap[i].is_numerical,
+                "bin_radio": dim_ctrl["bin_radio"],
             }
 
     @staticmethod

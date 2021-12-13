@@ -17,7 +17,7 @@ from .config import CSV, NDIMS, app
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
     dropdown_width = 45  # rem
-    bin_btns_sum_width = 10  # rem
+    bin_btns_sum_width = 8.5  # rem
 
     return dbc.Row(
         style={"margin-top": "7rem"},
@@ -41,21 +41,27 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                 ),
                             ),
                             dbc.Col(
-                                style={"width": f"{(bin_btns_sum_width / 2)}rem"},
-                                children=dbc.Button(
-                                    id=f"bin-default-{xy_str.lower()}-{num_id}",
-                                    outline=True,
-                                    children="ideal",
-                                ),
-                            ),
-                            #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
-                            #  start at top & decrease, until about equal with default #bins
-                            dbc.Col(
-                                style={"width": f"{(bin_btns_sum_width / 2)}rem"},
-                                children=dbc.Button(
-                                    id=f"bin-10^n-{xy_str.lower()}-{num_id}",
-                                    outline=True,
-                                    children="10^n",
+                                className="radio-group",
+                                style={"width": f"{bin_btns_sum_width}rem"},
+                                children=dbc.RadioItems(
+                                    id=f"bin-radios-{xy_str.lower()}-{num_id}",
+                                    className="btn-group",
+                                    inputClassName="btn-check",
+                                    labelClassName="btn btn-outline-primary",
+                                    labelCheckedClassName="active",
+                                    options=[
+                                        {
+                                            "label": "default",
+                                            "value": du.BinRadioOptions.DEFAULT.value,
+                                        },
+                                        {
+                                            #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
+                                            #  start at top & decrease, until about equal with default #bins
+                                            "label": "10^n",
+                                            "value": du.BinRadioOptions.TENPOW.value,
+                                        },
+                                    ],
+                                    value=du.BinRadioOptions.DEFAULT.value,
                                 ),
                             ),
                         ]
@@ -356,10 +362,12 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     [Output("heatmap-parent", "figure")]
     + [Output(f"dropdown-x-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-x-{i}", "value") for i in range(NDIMS)]
+    + [Output(f"bin-radios-x-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-x-{i}", "disabled") for i in range(NDIMS)]
     + [Output(f"bin-slider-x-{i}", "handleLabel") for i in range(NDIMS)]
     + [Output(f"dropdown-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "value") for i in range(NDIMS)]
+    + [Output(f"bin-radios-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "disabled") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "handleLabel") for i in range(NDIMS)],
     # Inputs
@@ -385,11 +393,7 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
         for i in range(NDIMS * 2)
     ]
     + [
-        Input(f"bin-default-{'x' if i%2==0 else 'y'}-{i//2}", "n_clicks")
-        for i in range(NDIMS * 2)
-    ]
-    + [
-        Input(f"bin-10^n-{'x' if i%2==0 else 'y'}-{i//2}", "n_clicks")
+        Input(f"bin-radios-{'x' if i%2==0 else 'y'}-{i//2}", "value")
         for i in range(NDIMS * 2)
     ],
     # States
@@ -422,8 +426,8 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     args = args[NDIMS * 2 :]
     args = args[NDIMS * 2 :]
 
-    # bins: auto & 10^n -- we'll detect these using context since only one thing happens per callback
-    args = args[NDIMS * 2 :]
+    # bin radios
+    xy_bin_radios: List[int] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
 
     # (STATES)
@@ -440,6 +444,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         [a for i, a in enumerate(xy_ons) if i % 2 == 0],
         [a for i, a in enumerate(xy_bins) if i % 2 == 0],
         [a for i, a in enumerate(xy_disabled_bins) if i % 2 == 0],
+        [a for i, a in enumerate(xy_bin_radios) if i % 2 == 0],
         True,
     )
     du.DimControlUtils.log_dims(x_from_dash, "From_dash Selected X-Dimensions")
@@ -448,6 +453,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         [a for i, a in enumerate(xy_ons) if i % 2 != 0],
         [a for i, a in enumerate(xy_bins) if i % 2 != 0],
         [a for i, a in enumerate(xy_disabled_bins) if i % 2 != 0],
+        [a for i, a in enumerate(xy_bin_radios) if i % 2 != 0],
         False,
     )
     du.DimControlUtils.log_dims(y_from_dash, "From_dash Selected Y-Dimensions")
@@ -483,10 +489,12 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         [du.DimControlUtils.make_fig(hmap, df)]
         + [x["name"] for x in x_to_dash]
         + [x["bins"] for x in x_to_dash]  # bin value
+        + [x["bin_radio"] for x in x_to_dash]
         + [not x["is_numerical"] for x in x_to_dash]  # bin disabled
         + [du.slider_handle_label(x["is_numerical"]) for x in x_to_dash]
         + [y["name"] for y in y_to_dash]
         + [y["bins"] for y in y_to_dash]  # bin value
+        + [y["bin_radio"] for y in y_to_dash]
         + [not y["is_numerical"] for y in y_to_dash]  # bin disabled
         + [du.slider_handle_label(y["is_numerical"]) for y in y_to_dash]
     )
