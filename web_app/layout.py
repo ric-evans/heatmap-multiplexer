@@ -45,9 +45,9 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                             dbc.Col(
                                 style={"width": f"{(bin_btns_sum_width / 2)}rem"},
                                 children=dbc.Button(
-                                    id=f"bin-auto-{xy_str.lower()}-{num_id}",
+                                    id=f"bin-default-{xy_str.lower()}-{num_id}",
                                     outline=True,
-                                    children="auto",
+                                    children="ideal",
                                 ),
                             ),
                             dbc.Col(
@@ -385,7 +385,7 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
         for i in range(NDIMS * 2)
     ]
     + [
-        Input(f"bin-auto-{'x' if i%2==0 else 'y'}-{i//2}", "n_clicks")
+        Input(f"bin-default-{'x' if i%2==0 else 'y'}-{i//2}", "n_clicks")
         for i in range(NDIMS * 2)
     ]
     + [

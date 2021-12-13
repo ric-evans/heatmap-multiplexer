@@ -124,8 +124,8 @@ class DimControlUtils:
             # is new dropdown value?
             if triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value":
                 return 0
-            # clicked auto button?
-            elif triggered() == f"bin-auto-{'x' if is_x else'y'}-{i}.n_clicks":
+            # clicked default button?
+            elif triggered() == f"bin-default-{'x' if is_x else'y'}-{i}.n_clicks":
                 return 0
             # clicked 10^n button?
             elif triggered() == f"bin-10^n-{'x' if is_x else'y'}-{i}.n_clicks":
@@ -223,13 +223,18 @@ class DimControlUtils:
                     continue
                 elif only == "y" and hb_inter["is_x"]:
                     continue
-                #  (left, right]
+                #  Ex: (left, right]
                 if isinstance(hb_inter["catbin"], pd.Interval):
-                    bracket, left = "(", hb_inter["catbin"].left
-                    if hb_inter["catbin"] == bin0:
-                        bracket, left = "[", df[hb_inter["name"]].min()
+                    if hb_inter["catbin"] == bin0:  # set the lowest bound to the min
+                        l_brac = "["
+                        left = df[hb_inter["name"]].min()
+                    else:
+                        l_brac = "[" if hb_inter["catbin"].closed_left else "("
+                        left = hb_inter["catbin"].left
+                    r_brac = "]" if hb_inter["catbin"].closed_right else ")"
+                    right = hb_inter["catbin"].right
                     strings.append(
-                        f"{hb_inter['name']}: {bracket}{left:5.2f}, {hb_inter['catbin'].right:5.2f}]"
+                        f"{hb_inter['name']}:{l_brac}{left:5.2f}, {right:5.2f}{r_brac}"
                     )
                 else:
                     strings.append(f"{hb_inter['name']}:{hb_inter['catbin']}")

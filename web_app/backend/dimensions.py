@@ -49,19 +49,63 @@ class Dim:
                 return math.isnan(val)
             return False
 
+        def get_sturges() -> int:
+            """use Sturges’ Rule"""
+            return int(np.ceil(np.log2(len(df[name])) + 1))
+
+        def get_default() -> List[pd.Interval]:
+            sturges = get_sturges()
+            return list(
+                pd.cut(
+                    np.linspace(min(values), max(values), num=sturges),
+                    sturges,
+                    include_lowest=True,
+                )
+            )
+
+        def dist(one: int, two: int) -> int:
+            return np.abs(one - two)  # type: ignore[no-any-return]
+
+        def get_10pow() -> List[pd.Interval]:
+            sturges = get_sturges()
+            # get starting power by rounding up "largest" value to nearest power of 10
+            largest_value = max(np.abs(max(values)), np.abs(min(values)))
+            power = int(np.ceil(np.log10(largest_value)))
+            prev = None
+            for power_offset in range(10):
+                width = 10 ** (power - power_offset)
+                end_offset = width
+                # if int(max(values) / width) == max(values) / width:
+                #     end_offset = 0
+                temp = list(
+                    pd.interval_range(
+                        start=min(values),
+                        end=max(values) + end_offset,
+                        freq=width,
+                        closed="left",
+                    )
+                )
+                # if new dist is now greater than last, use last
+                if prev and dist(len(temp), sturges) > dist(len(prev), sturges):
+                    return prev
+                prev = temp
+            return get_default()  # if this all fails for some reason, just use default
+
         # get a sorted unique list w/o nan values
         values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
         if isinstance(values[0], (float, int)):
             if not num_bins:
-                # use Sturges’ Rule
-                num_bins = int(np.ceil(np.log2(len(df[name])) + 1))
-            catbins = list(
-                pd.cut(
-                    np.linspace(min(values), max(values), num=num_bins),
-                    num_bins,
-                    include_lowest=True,
+                catbins = get_default()
+            elif num_bins == -1:
+                catbins = get_10pow()
+            else:
+                catbins = list(
+                    pd.cut(
+                        np.linspace(min(values), max(values), num=num_bins),
+                        num_bins,
+                        include_lowest=True,
+                    )
                 )
-            )
         else:
             catbins = values
 
@@ -89,8 +133,10 @@ class DimSelection:
         """Get the pandas-style query string."""
         if self.dim.is_numerical:
             return (
-                f"{self.dim.name} > {self.catbin.left} and "  # type: ignore[union-attr]
-                f"{self.dim.name} <= {self.catbin.right}"
+                f"{self.dim.name} {'>=' if self.catbin.closed_left else '>'} "  # type: ignore[union-attr]
+                f"{self.catbin.left} and "
+                f"{self.dim.name} {'<=' if self.catbin.closed_right else '<'} "
+                f"{self.catbin.right}"
             )
 
         return f'{self.dim.name} == "{self.catbin}"'
