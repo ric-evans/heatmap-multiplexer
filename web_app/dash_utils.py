@@ -136,7 +136,7 @@ class DimControlUtils:
         def get_bin(i: int, b_val: int, radio: int) -> Tuple[int, int]:
             # is new dropdown value?
             if triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value":
-                return 0, BinRadioOptions.MANUAL.value
+                return -1, BinRadioOptions.TENPOW.value
             # just now adjusted the slider
             elif triggered() == f"bin-slider-{'x' if is_x else'y'}-{i}.value":
                 return b_val, BinRadioOptions.MANUAL.value
@@ -239,16 +239,16 @@ class DimControlUtils:
         """Make go.Figure with the heatmap."""
         xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
         ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
-        # detect if 10^N (smart binning)
-        ys_bin_10pow = [d.is_10pow for d in hmap.y_dims]
-        xs_bin_10pow = [d.is_10pow for d in hmap.x_dims]
+        # detect if 10^N (smart binning) AND also discrete
+        ys_10powdisc = [d.is_10pow and d.is_discrete for d in hmap.y_dims]
+        xs_10powdisc = [d.is_10pow and d.is_discrete for d in hmap.x_dims]
 
         def stringer(
             brick: backend.heatmap.HeatBrick, only: str = "", short: bool = False
         ) -> List[str]:
             strings = []
-            for hb_inter, bin0, tenpow in zip(
-                brick["intersection"], ys_bin0 + xs_bin0, ys_bin_10pow + xs_bin_10pow
+            for hb_inter, bin0, tenpowdisc in zip(
+                brick["intersection"], ys_bin0 + xs_bin0, ys_10powdisc + xs_10powdisc
             ):
                 if only == "x" and not hb_inter["is_x"]:
                     continue
@@ -266,15 +266,14 @@ class DimControlUtils:
                     r_brac = "]" if hb_inter["catbin"].closed_right else ")"
                     right = hb_inter["catbin"].right
 
-                    if short:
+                    if tenpowdisc:
+                        strings.append(f"{hb_inter['name']}:{left}")
+                    elif short:
                         if l_brac == "[" and r_brac == ")":
-                            # if tenpow:
-                            #     strings.append(f"{hb_inter['name']}:{left}s")
-                            # else:
                             strings.append(f"{hb_inter['name']}:{left}+")
                         else:
                             strings.append(f"{hb_inter['name']}:{left}-{right}")
-                    else:
+                    else:  # long format
                         strings.append(
                             f"{hb_inter['name']}:{l_brac}{left:5.2f}, {right:5.2f}{r_brac}"
                         )

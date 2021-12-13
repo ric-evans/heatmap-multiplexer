@@ -18,7 +18,7 @@ from .config import CSV, NDIMS, app
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
     dropdown_width = 45  # rem
-    bin_btns_sum_width = 15.5  # rem
+    bin_btns_sum_width = 19  # rem
 
     return dbc.Row(
         style={"margin-top": "7rem"},
@@ -57,12 +57,12 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                         labelCheckedClassName="active",
                                         options=[
                                             {
-                                                "label": "reset",
-                                                "value": du.BinRadioOptions.RESET.value,
-                                            },
-                                            {
                                                 "label": "manual",
                                                 "value": du.BinRadioOptions.MANUAL.value,
+                                            },
+                                            {
+                                                "label": "auto-manual",
+                                                "value": du.BinRadioOptions.RESET.value,
                                             },
                                             {
                                                 #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.

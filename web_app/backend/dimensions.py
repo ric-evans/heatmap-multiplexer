@@ -16,7 +16,11 @@ class Dim:
     """Wraps a single dimension's metadata."""
 
     def __init__(
-        self, name: str, catbins: List[CatBin], is_10pow: bool = False
+        self,
+        name: str,
+        catbins: List[CatBin],
+        is_10pow: bool = False,
+        is_discrete: bool = True,
     ) -> None:
         self.catbins = catbins
         self.name = name
@@ -24,8 +28,10 @@ class Dim:
 
         if all(isinstance(c, pd.Interval) for c in catbins):
             self.is_numerical = True
+            self.is_discrete = is_discrete
         elif all(isinstance(c, str) for c in catbins):
             self.is_numerical = False
+            self.is_discrete = True
         else:
             raise ValueError(f"Dim has invalid catbin type(s): {name=}, {catbins=}")
 
@@ -43,7 +49,10 @@ class Dim:
     def from_pandas_df(
         name: str, df: pd.DataFrame, num_bins: Optional[int] = None
     ) -> "Dim":
-        """Factory from a pandas dataframe."""
+        """Factory from a pandas dataframe.
+
+        All intervals are left-inclusive: [a,b)
+        """
         is_10pow = False
 
         def is_nullish(val: Any) -> bool:
@@ -62,7 +71,7 @@ class Dim:
             # print(min(values))
             return list(
                 pd.cut(
-                    np.linspace(min(values), max(values), num=num),
+                    np.linspace(min(unique_values), max(unique_values), num=num),
                     num,
                     include_lowest=True,
                     right=False,
@@ -74,19 +83,22 @@ class Dim:
             return max(one, two) / min(one, two)
             # return np.abs(one - two)  # type: ignore[no-any-return]
 
+        class TenPowException(Exception):
+            """Raise when 10-Pow algo fails."""
+
         def get_10pow() -> List[pd.Interval]:
             logging.info(f"10^N Binning ({name})...")
             sturges = sturges_rule()
             # get starting power by rounding up "largest" value to nearest power of 10
-            largest_value = max(np.abs(max(values)), np.abs(min(values)))
+            largest_value = max(np.abs(max(unique_values)), np.abs(min(unique_values)))
             power = int(np.ceil(np.log10(largest_value)))
             prev = None
             for power_offset in range(7):  # 7; think: low-range high-value; 2000, 2001
                 width = 10 ** (power - power_offset)
                 temp = list(
                     pd.interval_range(
-                        start=(min(values) // width) * width,  # 5278 -> 5000
-                        end=max(values) + width,  # 6001 -> 7000
+                        start=(min(unique_values) // width) * width,  # 5278 -> 5000
+                        end=max(unique_values) + width,  # 6001 -> 7000
                         freq=width,
                         closed="left",
                     )
@@ -96,23 +108,41 @@ class Dim:
                 if prev and dist(len(temp), sturges) > dist(len(prev), sturges):
                     return prev
                 prev = temp
-            return get_cut(sturges)  # if this algo fails for some reason
+            raise TenPowException()
+
+        def is_discrete_by_binning(num: int) -> bool:
+            """If pd.cut() places multiple values in the same bin, then it's not discrete."""
+            print(pd.cut(unique_values, num, include_lowest=True, right=False))
+            return (
+                len(pd.cut(unique_values, num, include_lowest=True, right=False)) <= num
+            )
 
         # get a sorted unique list w/o nan values
-        values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
-        if isinstance(values[0], (float, int)):
+        unique_values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
+        # Numerical
+        if isinstance(unique_values[0], (float, int)):
+            # use default # of bins
             if not num_bins:
                 catbins = get_cut(sturges_rule())
+            # use 10-pow calculated bins
             elif num_bins == -1:
-                catbins = get_10pow()
-                is_10pow = True  # only mark true if this algo works
+                try:
+                    catbins = get_10pow()
+                    is_10pow = True  # only mark true if this algo works
+                except TenPowException:
+                    catbins = get_cut(sturges_rule())
+            # use given # of bins
             else:
                 catbins = get_cut(num_bins)
+            # Did the binning make this data effectively discrete?
+            is_discrete = is_discrete_by_binning(len(catbins))
+        # Categorical
         else:
-            catbins = values
+            catbins = unique_values
+            is_discrete = True
 
         logging.info(f"Cat-Bins: {catbins}")
-        return Dim(name, catbins, is_10pow)
+        return Dim(name, catbins, is_10pow, is_discrete)
 
 
 class DimSelection:
