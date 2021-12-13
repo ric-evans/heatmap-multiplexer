@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import dash_bootstrap_components as dbc  # type: ignore[import]
 import dash_daq as daq  # type: ignore[import]
+import visdcc  # type: ignore[import]
 from dash import dcc, html  # type: ignore
 from dash.dependencies import Input, Output, State  # type: ignore
 
@@ -129,6 +130,9 @@ def layout() -> None:
     # Layout
     app.layout = html.Div(
         children=[
+            # JS calls for refreshing page
+            visdcc.Run_js("refresh-for-new-csv"),  # pylint: disable=E1101
+            #
             html.H1("Heatmap Multiplexer", style={"margin-bottom": 0}),
             dcc.Loading(
                 dcc.Graph(
@@ -301,7 +305,7 @@ def layout() -> None:
                 contents="",
             ),
             html.Div(style={"height": "5em"}),
-        ]
+        ],
     )
 
 
@@ -330,11 +334,11 @@ def count_or_stats(value: str) -> Tuple[bool, int, str]:
         Output(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "options")
         for i in range(NDIMS * 2)
     ]
-    + [Output("dropdown-color", "options")],
+    + [Output("dropdown-color", "options"), Output("refresh-for-new-csv", "run")],
     Input("wbs-upload-xlsx", "contents")
     # [State("url", "pathname")],
 )
-def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
+def upload_csv(contents: str) -> Tuple[Union[List[Dict[str, str]], str]]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
     try:
         base64_file = contents.split(",")[1]
@@ -355,7 +359,10 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
         for dim in df.columns
     ]
 
-    return [options] * ((NDIMS * 2) + 1)
+    if du.triggered() == "wbs-upload-xlsx.contents":
+        return tuple([du.no_update] * ((NDIMS * 2) + 1) + ["location.reload();"])
+    else:
+        return tuple([options] * ((NDIMS * 2) + 1) + [du.no_update])
 
 
 @app.callback(  # type: ignore[misc]
