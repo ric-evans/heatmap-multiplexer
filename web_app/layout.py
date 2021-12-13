@@ -18,7 +18,7 @@ from .config import CSV, NDIMS, app
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
     dropdown_width = 45  # rem
-    bin_btns_sum_width = 21  # rem
+    bin_btns_sum_width = 15.5  # rem
 
     return dbc.Row(
         style={"margin-top": "7rem"},
@@ -47,29 +47,32 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                     "width": f"{bin_btns_sum_width}rem",
                                     "padding": 0,
                                 },
-                                children=dbc.RadioItems(
-                                    id=f"bin-radios-{xy_str.lower()}-{num_id}",
-                                    className="btn-group",
-                                    inputClassName="btn-check",
-                                    labelClassName="btn btn-outline-primary",
-                                    labelCheckedClassName="active",
-                                    options=[
-                                        {
-                                            "label": "reset",
-                                            "value": du.BinRadioOptions.RESET.value,
-                                        },
-                                        {
-                                            "label": "manual binning",
-                                            "value": du.BinRadioOptions.MANUAL.value,
-                                        },
-                                        {
-                                            #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
-                                            #  start at top & decrease, until about equal with default #bins
-                                            "label": "smart binning",
-                                            "value": du.BinRadioOptions.TENPOW.value,
-                                        },
-                                    ],
-                                    value=du.BinRadioOptions.MANUAL.value,
+                                children=html.Div(
+                                    id=f"bin-radios-parent-{xy_str.lower()}-{num_id}",
+                                    children=dbc.RadioItems(
+                                        id=f"bin-radios-{xy_str.lower()}-{num_id}",
+                                        className="btn-group",
+                                        inputClassName="btn-check",
+                                        labelClassName="btn btn-outline-primary",
+                                        labelCheckedClassName="active",
+                                        options=[
+                                            {
+                                                "label": "reset",
+                                                "value": du.BinRadioOptions.RESET.value,
+                                            },
+                                            {
+                                                "label": "manual",
+                                                "value": du.BinRadioOptions.MANUAL.value,
+                                            },
+                                            {
+                                                #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
+                                                #  start at top & decrease, until about equal with default #bins
+                                                "label": "smart bins",
+                                                "value": du.BinRadioOptions.TENPOW.value,
+                                            },
+                                        ],
+                                        value=du.BinRadioOptions.MANUAL.value,
+                                    ),
                                 ),
                             ),
                         ]
@@ -378,11 +381,13 @@ def upload_csv(contents: str) -> Tuple[Union[List[Dict[str, str]], str]]:
     + [Output(f"bin-slider-x-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-radios-x-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-x-{i}", "disabled") for i in range(NDIMS)]
+    + [Output(f"bin-radios-parent-x-{i}", "hidden") for i in range(NDIMS)]
     + [Output(f"bin-slider-x-{i}", "handleLabel") for i in range(NDIMS)]
     + [Output(f"dropdown-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-radios-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "disabled") for i in range(NDIMS)]
+    + [Output(f"bin-radios-parent-y-{i}", "hidden") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "handleLabel") for i in range(NDIMS)],
     # Inputs
     [
@@ -502,14 +507,18 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
 
     return tuple(
         [du.DimControlUtils.make_fig(hmap, df)]
+        #
         + [x["name"] for x in x_to_dash]
         + [x["bins"] for x in x_to_dash]  # bin value
         + [x["bin_radio"] for x in x_to_dash]
         + [not x["is_numerical"] for x in x_to_dash]  # bin disabled
+        + [not x["is_numerical"] for x in x_to_dash]  # bin radio hidden
         + [du.slider_handle_label(x["is_numerical"]) for x in x_to_dash]
+        #
         + [y["name"] for y in y_to_dash]
         + [y["bins"] for y in y_to_dash]  # bin value
         + [y["bin_radio"] for y in y_to_dash]
         + [not y["is_numerical"] for y in y_to_dash]  # bin disabled
+        + [not y["is_numerical"] for y in y_to_dash]  # bin radio hidden
         + [du.slider_handle_label(y["is_numerical"]) for y in y_to_dash]
     )
