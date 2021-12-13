@@ -13,7 +13,7 @@ import plotly.graph_objects as go  # type: ignore[import]
 from dash import callback_context, no_update  # type: ignore
 
 from . import backend
-from .config import CSV, CSV_BACKUP
+from .config import CSV, CSV_BACKUP, NDIMS
 
 
 class StatsRadioOptions(enum.Enum):
@@ -120,8 +120,18 @@ class DimControlUtils:
     ) -> List[DimControls]:
         """Get the from_dash list with augmenting as needed."""
 
-        def is_new_dropdown_value(i: int) -> bool:
-            return bool(triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value")
+        def get_bin(i: int, value: int) -> int:
+            # is new dropdown value?
+            if triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value":
+                return 0
+            # clicked auto button?
+            elif triggered() == f"bin-auto-{'x' if is_x else'y'}-{i}.n_clicks":
+                return 0
+            # clicked 10^n button?
+            elif triggered() == f"bin-10^n-{'x' if is_x else'y'}-{i}.n_clicks":
+                return -1
+            else:
+                return value
 
         from_dash: List[DimControls] = []
         for i, zipped in enumerate(zip(names, ons, bins, disableds)):
@@ -129,7 +139,7 @@ class DimControlUtils:
                 {
                     "name": zipped[0],
                     "on": zipped[1],
-                    "bins": 0 if is_new_dropdown_value(i) else zipped[2],
+                    "bins": get_bin(i, zipped[2]),
                     "is_numerical": not zipped[3],
                 }
             )

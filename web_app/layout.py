@@ -16,63 +16,91 @@ from .config import CSV, NDIMS, app
 
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
-    width = "37.5em"
+    dropdown_width = 45  # rem
+    bin_btns_sum_width = 10  # rem
 
     return dbc.Row(
         style={"margin-top": "7rem"},
         children=[
             dbc.Col(
                 children=[
-                    daq.Slider(
-                        id=f"bin-slider-{xy_str.lower()}-{num_id}",
-                        min=2,  # the bin defaulting algo is only defined >=2
-                        max=12,
-                        value=0,
-                        handleLabel=du.slider_handle_label(True),
-                        step=1,
-                        size=width,
-                        disabled=False,
+                    dbc.Row(
+                        children=[
+                            dbc.Col(
+                                style={"align-self": "flex-end"},
+                                children=daq.Slider(
+                                    id=f"bin-slider-{xy_str.lower()}-{num_id}",
+                                    min=2,  # the bin defaulting algo is only defined >=2
+                                    max=12,
+                                    value=0,
+                                    handleLabel=du.slider_handle_label(True),
+                                    step=1,
+                                    size=(dropdown_width - bin_btns_sum_width - 2) * 10,
+                                    disabled=False,
+                                    labelPosition="bottom",
+                                ),
+                            ),
+                            #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
+                            #  start at top & decrease, until about equal with default #bins
+                            dbc.Col(
+                                style={"width": f"{(bin_btns_sum_width / 2)}rem"},
+                                children=dbc.Button(
+                                    id=f"bin-auto-{xy_str.lower()}-{num_id}",
+                                    outline=True,
+                                    children="auto",
+                                ),
+                            ),
+                            dbc.Col(
+                                style={"width": f"{(bin_btns_sum_width / 2)}rem"},
+                                children=dbc.Button(
+                                    id=f"bin-10^n-{xy_str.lower()}-{num_id}",
+                                    outline=True,
+                                    children="10^n",
+                                ),
+                            ),
+                        ]
                     ),
-                    # TODO- add auto-10^x trigger
-                    #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
-                    #  start at top & decrease, until about equal with default #bins
-                    dcc.Dropdown(
-                        style={"width": width},
-                        id=f"dropdown-{xy_str.lower()}-{num_id}",
-                        placeholder=f"Select{' Additional' if num_id else ''}"
-                        f" {xy_str.upper()} Dimension",
-                        clearable=True,
+                    dbc.Row(
+                        dcc.Dropdown(
+                            style={"width": f"{dropdown_width}rem"},
+                            id=f"dropdown-{xy_str.lower()}-{num_id}",
+                            placeholder=f"Select{' Additional' if num_id else ''}"
+                            f" {xy_str.upper()} Dimension",
+                            clearable=True,
+                        ),
                     ),
                 ]
             ),
             dbc.Col(
-                align="start",
-                width=1,
+                # align="start",
+                # width=1,
                 children=daq.BooleanSwitch(
-                    # style={"width": 55},
                     id=f"hide-switch-{xy_str.lower()}-{num_id}",
                     on=True,
                     label={"label": "Visible", "style": {"margin-bottom": 0}},
                     labelPosition="top",
                 ),
+                style={"align-self": "flex-end", "margin-left": 5, "width": "5rem"},
             ),
             dbc.Col(
-                align="start",
-                style={"height": "5rem"},
+                # align="start",
+                style={"height": "5rem", "align-self": "flex-end", "padding": 0},
                 children=[
                     dbc.Button(
                         id=id_,
                         children=arrow if not disabled else "-",
                         style={
-                            "width": "4rem",
+                            "width": "3rem",
                             "padding": "0",
+                            "margin": 0,
+                            # "margin-left": 5,
                             # "padding-left": "0",
                             # "padding-right": "0",
                             "line-height": 0,
-                            "font-size": "3.5rem",
+                            "font-size": "3rem",
                             "margin-top": "1.3rem",
                             # "border": 0,
-                            "margin-right": "1rem",
+                            # "margin-right": "1rem",
                         },
                         disabled=disabled,
                         # color="none",
@@ -222,12 +250,27 @@ def layout() -> None:
                         # width=5,
                         children=[html.Div("Y Dimensions")]
                         + [dbc.Row(make_dim_control(i, "Y")) for i in range(NDIMS)],
+                        style={
+                            "border-width": 1,
+                            "border-style": "dashed",
+                            "padding-left": "4rem",
+                            "padding-right": "4rem",
+                            "padding-bottom": "4rem",
+                        },
                     ),
-                    # html.Div(style={"width": "25px"}),
+                    html.Div(style={"width": "1rem"}),  # space between columns
+                    # dbc.Col(),
                     dbc.Col(
                         # width=5,
                         children=[html.Div("X Dimensions")]
                         + [dbc.Row(make_dim_control(i, "X")) for i in range(NDIMS)],
+                        style={
+                            "border-width": 1,
+                            "border-style": "dashed",
+                            "padding-left": "4rem",
+                            "padding-right": "4rem",
+                            "padding-bottom": "4rem",
+                        },
                     ),
                 ],
             ),
@@ -340,6 +383,14 @@ def upload_csv(contents: str) -> List[List[Dict[str, str]]]:
     + [
         Input(f"down-{'x' if i%2==0 else 'y'}-{i//2}", "n_clicks")
         for i in range(NDIMS * 2)
+    ]
+    + [
+        Input(f"bin-auto-{'x' if i%2==0 else 'y'}-{i//2}", "n_clicks")
+        for i in range(NDIMS * 2)
+    ]
+    + [
+        Input(f"bin-10^n-{'x' if i%2==0 else 'y'}-{i//2}", "n_clicks")
+        for i in range(NDIMS * 2)
     ],
     # States
     [
@@ -368,6 +419,10 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     args = args[NDIMS * 2 :]
 
     # ups & downs -- we'll detect these using context since only one thing happens per callback
+    args = args[NDIMS * 2 :]
+    args = args[NDIMS * 2 :]
+
+    # bins: auto & 10^n -- we'll detect these using context since only one thing happens per callback
     args = args[NDIMS * 2 :]
     args = args[NDIMS * 2 :]
 
