@@ -18,7 +18,7 @@ from .config import CSV, NDIMS, app
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
     """Return a control box for managing/selecting a dimension."""
     dropdown_width = 45  # rem
-    bin_btns_sum_width = 8.5  # rem
+    bin_btns_sum_width = 21  # rem
 
     return dbc.Row(
         style={"margin-top": "7rem"},
@@ -32,7 +32,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                 children=daq.Slider(
                                     id=f"bin-slider-{xy_str.lower()}-{num_id}",
                                     min=2,  # the bin defaulting algo is only defined >=2
-                                    max=12,
+                                    max=20,
                                     value=0,
                                     handleLabel=du.slider_handle_label(True),
                                     step=1,
@@ -43,7 +43,10 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                             ),
                             dbc.Col(
                                 className="radio-group",
-                                style={"width": f"{bin_btns_sum_width}rem"},
+                                style={
+                                    "width": f"{bin_btns_sum_width}rem",
+                                    "padding": 0,
+                                },
                                 children=dbc.RadioItems(
                                     id=f"bin-radios-{xy_str.lower()}-{num_id}",
                                     className="btn-group",
@@ -52,17 +55,21 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                     labelCheckedClassName="active",
                                     options=[
                                         {
-                                            "label": "default",
-                                            "value": du.BinRadioOptions.DEFAULT.value,
+                                            "label": "reset",
+                                            "value": du.BinRadioOptions.RESET.value,
+                                        },
+                                        {
+                                            "label": "manual binning",
+                                            "value": du.BinRadioOptions.MANUAL.value,
                                         },
                                         {
                                             #  (0.0s, 0.1s, 0.2s, ...), (0s, 1s, 2s, ...), (0s, 10s, 20s, ...), etc.
                                             #  start at top & decrease, until about equal with default #bins
-                                            "label": "10^n",
+                                            "label": "smart binning",
                                             "value": du.BinRadioOptions.TENPOW.value,
                                         },
                                     ],
-                                    value=du.BinRadioOptions.DEFAULT.value,
+                                    value=du.BinRadioOptions.MANUAL.value,
                                 ),
                             ),
                         ]
@@ -411,6 +418,7 @@ def upload_csv(contents: str) -> Tuple[Union[List[Dict[str, str]], str]]:
 )
 def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
+    logging.warning(du.triggered())
 
     args = list(args_tuple)
     xys: List[str] = [a if a else "" for a in args[: NDIMS * 2]]  # type: ignore[misc]

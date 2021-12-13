@@ -35,8 +35,9 @@ class StatsRadioOptions(enum.Enum):
 class BinRadioOptions(enum.Enum):
     """Stores option values for the bin radio buttons."""
 
+    RESET = -1
     NO_RADIO_SELECT = 0
-    DEFAULT = 1
+    MANUAL = 1
     TENPOW = 2
 
 
@@ -135,13 +136,17 @@ class DimControlUtils:
         def get_bin(i: int, b_val: int, radio: int) -> Tuple[int, int]:
             # is new dropdown value?
             if triggered() == f"dropdown-{'x' if is_x else'y'}-{i}.value":
-                return 0, BinRadioOptions.DEFAULT.value
+                return 0, BinRadioOptions.MANUAL.value
+            # just now adjusted the slider
             elif triggered() == f"bin-slider-{'x' if is_x else'y'}-{i}.value":
-                return b_val, BinRadioOptions.NO_RADIO_SELECT.value
-            # clicked default button?
-            elif radio == BinRadioOptions.DEFAULT.value:
-                return 0, radio
-            # clicked 10^n button?
+                return b_val, BinRadioOptions.MANUAL.value
+            # is reset option on?
+            elif radio == BinRadioOptions.RESET.value:
+                return 0, BinRadioOptions.MANUAL.value
+            # # is manual option on?
+            # elif radio == BinRadioOptions.MANUAL.value:
+            #     return 0, radio
+            # is 10^n option on? (just now or otherwise)
             elif radio == BinRadioOptions.TENPOW.value:
                 return -1, radio
             else:
