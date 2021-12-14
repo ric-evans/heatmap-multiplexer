@@ -15,6 +15,8 @@ from dash import callback_context, no_update  # type: ignore
 from . import backend
 from .config import CSV, CSV_BACKUP, CSV_BACKUP_META, CSV_META
 
+ITS_A_FILLER_NAME_HACK = "<IT'S-A-FILLER>"
+
 
 @enum.unique
 class StatsRadioOptions(enum.Enum):
@@ -242,9 +244,75 @@ class DimControlUtils:
 
     @staticmethod
     def make_fig(
-        hmap: backend.heatmap.Heatmap, df: pd.DataFrame, title: str
+        hmap: backend.heatmap.Heatmap, df: pd.DataFrame, title: str, add_lines: bool
     ) -> go.Figure:
         """Make go.Figure with the heatmap."""
+        add_lines = add_lines and (len(hmap.y_dims) > 1 or len(hmap.x_dims) > 1)
+
+        def add_fillers() -> Tuple[
+            List[List[backend.heatmap.HeatBrick]], List[str], List[str]
+        ]:
+            # First add x-fillers
+            with_x_fillers: List[List[backend.heatmap.HeatBrick]] = []
+            x_fillers: List[str] = []
+            for r, row in enumerate(hmap.heatmap):
+                new_row: List[backend.heatmap.HeatBrick] = []
+                for i, brick in enumerate(row):
+                    if hmap.x_dims:
+                        if i % len(hmap.x_dims[-1].catbins) == 0 and i:
+                            # HACK: unique simple labels
+                            x_filler_i = i // len(hmap.x_dims[-1].catbins) - 1
+                            if r == 0:  # only add row for first
+                                x_fillers.append(" " * (len(x_fillers) + 1))
+                            # Add filler
+                            new_row.append(
+                                {
+                                    "z": None,
+                                    "intersection": [
+                                        {
+                                            "name": ITS_A_FILLER_NAME_HACK,
+                                            # HACK: unique simple labels
+                                            "catbin": x_fillers[x_filler_i],
+                                            "is_x": True,
+                                        }
+                                    ],
+                                }
+                            )
+                    new_row.append(brick)
+                with_x_fillers.append(new_row)
+            # Next, add y-fillers
+            # This has to be separate b/c the rows change length above
+            with_xy_fillers: List[List[backend.heatmap.HeatBrick]] = []
+            y_fillers: List[str] = []
+            for r, row in enumerate(with_x_fillers):
+                if r and r % len(hmap.y_dims[-1].catbins) == 0:
+                    # HACK: unique simple labels
+                    # y_filler_i = (r // len(hmap.y_dims[-1].catbins)) - 1
+                    # if r == 0:  # only add row for first
+                    y_fillers.append(" " * (len(y_fillers) + 1))
+                    # Add filler
+                    with_xy_fillers.append(
+                        [
+                            {
+                                "z": None,
+                                "intersection": [
+                                    {
+                                        "name": ITS_A_FILLER_NAME_HACK,
+                                        # HACK: unique simple labels
+                                        "catbin": y_fillers[-1],
+                                        "is_x": False,
+                                    }
+                                ],
+                            }
+                        ]
+                        * len(row)
+                    )
+                with_xy_fillers.append(row)
+            return with_xy_fillers, x_fillers, y_fillers
+
+        if add_lines:
+            hmap.heatmap, x_fillers, y_fillers = add_fillers()
+
         xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
         ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
         # detect if 10^N (smart binning) AND also discrete
@@ -278,36 +346,168 @@ class DimControlUtils:
                         strings.append(f"{hb_inter['name']}:{left}")
                     elif short:
                         if l_brac == "[" and r_brac == ")":
-                            strings.append(f"{hb_inter['name']}:{left}+")
+                            strings.append(f"({left}+)")
                         else:
-                            strings.append(f"{hb_inter['name']}:{left}-{right}")
+                            strings.append(f"({left}-{right})")
                     else:  # long format
                         strings.append(
-                            f"{hb_inter['name']}:{l_brac}{left:5.2f}, {right:5.2f}{r_brac}"
+                            f"{hb_inter['name']}: {l_brac}{left:5.2f}, {right:5.2f}{r_brac}"
                         )
                 else:
-                    strings.append(f"{hb_inter['name']}:{hb_inter['catbin']}")
+                    if short:
+                        strings.append(f"({hb_inter['catbin']})")
+                    else:  # long format
+                        strings.append(f"{hb_inter['name']}: {hb_inter['catbin']}")
             return strings
 
+        # Start with Heatmap
+        x_tix = [
+            col["intersection"][0]["catbin"]  # HACK: unique simple labels
+            if col["intersection"]
+            and col["intersection"][0]["name"] == ITS_A_FILLER_NAME_HACK
+            else " ".join(stringer(col, "x", short=True))
+            for col in hmap.heatmap[0]
+        ]
+        y_tix = [
+            row[0]["intersection"][0]["catbin"]  # HACK: unique simple labels
+            if row[0]["intersection"]
+            and row[0]["intersection"][0]["name"] == ITS_A_FILLER_NAME_HACK
+            else " ".join(stringer(row[0], "y", short=True))
+            for row in hmap.heatmap
+        ]
+        if add_lines:
+            # add border ticks & border filler data
+            if x_fillers:
+                x_tix = [x_fillers[-1] + " "] + x_tix + [x_fillers[-1] + (" " * 2)]
+            else:
+                x_tix = [" "] + x_tix + [" " * 2]
+            if y_fillers:
+                y_tix = [y_fillers[-1] + " "] + y_tix + [y_fillers[-1] + (" " * 2)]
+            else:
+                y_tix = [" "] + y_tix + [" " * 2]
+            border_brick = {
+                "z": None,
+                "intersection": [
+                    {"name": ITS_A_FILLER_NAME_HACK, "catbin": "", "is_x": False}
+                ],
+            }
+            z_data: List[List[Optional[float]]] = [
+                [brick["z"] for brick in [border_brick] + row + [border_brick]]
+                for row in [[border_brick] * len(hmap.heatmap[0])]
+                + hmap.heatmap  # type: ignore[operator]
+                + [[border_brick] * len(hmap.heatmap[0])]
+            ]
+            z_text = [
+                [
+                    "<br>".join([str(brick["z"])] + stringer(brick))
+                    if brick["intersection"]
+                    and brick["intersection"][0]["name"] != ITS_A_FILLER_NAME_HACK
+                    else ""
+                    for brick in [border_brick] + row + [border_brick]
+                ]
+                for row in [[border_brick] * len(hmap.heatmap[0])]
+                + hmap.heatmap  # type: ignore[operator]
+                + [[border_brick] * len(hmap.heatmap[0])]
+            ]
+        else:
+            z_data = [[brick["z"] for brick in row] for row in hmap.heatmap]
+            z_text = [
+                ["<br>".join([str(brick["z"])] + stringer(brick)) for brick in row]
+                for row in hmap.heatmap
+            ]
         fig = go.Figure(
             layout=go.Layout(title=title),
             data=go.Heatmap(
-                z=[[brick["z"] for brick in row] for row in hmap.heatmap],
-                x=[
-                    " | ".join(stringer(col, "x", short=True))
-                    for col in hmap.heatmap[0]
-                ],
-                y=[
-                    " | ".join(stringer(row[0], "y", short=True))
-                    for row in hmap.heatmap
-                ],
+                z=z_data,
+                x=x_tix,
+                y=y_tix,
                 # hoverongaps=False,
                 hoverinfo="text",
-                text=[
-                    ["<br>".join([str(brick["z"])] + stringer(brick)) for brick in row]
-                    for row in hmap.heatmap
-                ],
+                text=z_text,
             ),
         )
+
+        # Format the Axes
+        x_title = " — ".join(d.name.upper() for d in hmap.x_dims)
+        y_title = " — ".join(d.name.upper() for d in hmap.y_dims)
+        for fn, title_text in [
+            (fig.update_yaxes, y_title),
+            (fig.update_xaxes, x_title),
+        ]:
+            fn(
+                # type="linear",  # may be unnecessary -> plotly auto-detects
+                title={"text": title_text},
+                # showgrid=True, # True by default
+                tickmode="linear",  # puts ticks/labels/grid-lines on every axis val
+                ticklabeloverflow="allow",  # put label even if it overlaps stuff
+                ticklen=50,  # px length of tick line
+                ticks="outside",  # draw tick outside of axis
+                tickson="boundaries",  # draw ticks/grid-lines between blocks
+                zeroline=False,  # unnecessary
+                # showticklabels=False,
+                # showspikes=True,
+                spikemode="toaxis",  # draw spike (dropline) to the axis (across or marker on axis)
+                spikesnap="cursor",
+                # showline=True,
+                spikedash="solid",
+                spikethickness=1,
+                # secondary_y=True,
+            )
+
+        # Add dots to empty bricks
+        none_dots = []
+        for r, row in enumerate(z_data):
+            for i, data in enumerate(row):
+                if data is None:
+                    none_dots.append((x_tix[i], y_tix[r]))
+        fig.add_trace(
+            go.Scatter(
+                x=[n[0] for n in none_dots],
+                y=[n[1] for n in none_dots],
+                showlegend=False,
+                mode="markers",
+                marker=dict(color="black", size=5),
+                hoverinfo="skip",  # just do whatever heatmap does
+            )
+        )
+
+        # Add the reference lines
+        if add_lines:
+            for x_coord in [x_tix[0]] + x_fillers + [x_tix[-1]]:
+                # TODO - add different weights by %'ing w/ lengths
+                fig.add_trace(
+                    go.Scatter(
+                        x=[
+                            x_coord,
+                            x_coord,
+                        ],
+                        y=[
+                            y_tix[0],
+                            y_tix[-1],
+                        ],
+                        mode="lines",
+                        line=go.scatter.Line(color="black", width=5),
+                        showlegend=False,
+                        hoverinfo="none",
+                    )
+                )
+            for y_coord in [y_tix[0]] + y_fillers + [y_tix[-1]]:
+                # TODO - add different weights by %'ing w/ lengths
+                fig.add_trace(
+                    go.Scatter(
+                        x=[
+                            x_tix[0],
+                            x_tix[-1],
+                        ],
+                        y=[
+                            y_coord,
+                            y_coord,
+                        ],
+                        mode="lines",
+                        line=go.scatter.Line(color="black", width=5),
+                        showlegend=False,
+                        hoverinfo="none",
+                    )
+                )
 
         return fig

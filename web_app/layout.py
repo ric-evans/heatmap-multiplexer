@@ -142,6 +142,15 @@ def layout() -> None:
             visdcc.Run_js("refresh-for-new-csv"),  # pylint: disable=E1101
             #
             html.H1("Heatmap Multiplexer", style={"margin-bottom": 0}),
+            daq.BooleanSwitch(  # pylint:disable=not-callable
+                id="use-lines-boolean",
+                on=True,
+                label={
+                    "label": "Display Hierarchy Lines",
+                    "style": {"margin-bottom": 0},
+                },
+                labelPosition="bottom",
+            ),
             dcc.Loading(
                 dcc.Graph(
                     id="heatmap-parent",
@@ -414,7 +423,8 @@ def upload_csv(contents: str, filename: str) -> Tuple[Union[List[Dict[str, str]]
     + [
         Input(f"bin-radios-{'x' if i%2==0 else 'y'}-{i//2}", "value")
         for i in range(NDIMS * 2)
-    ],
+    ]
+    + [Input("use-lines-boolean", "on")],
     # States
     [
         State(f"bin-slider-{'x' if i%2==0 else 'y'}-{i//2}", "disabled")
@@ -449,6 +459,9 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     # bin radios
     xy_bin_radios: List[int] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
+
+    # use lines boolean
+    use_lines: bool = args.pop(0)  # type: ignore[assignment]
 
     # (STATES)
 
@@ -506,7 +519,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     )
 
     return tuple(
-        [du.DimControlUtils.make_fig(hmap, df, title)]
+        [du.DimControlUtils.make_fig(hmap, df, title, use_lines)]
         #
         + [x["name"] for x in x_to_dash]
         + [x["bins"] for x in x_to_dash]  # bin value
