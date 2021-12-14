@@ -8,8 +8,11 @@ import dash  # type: ignore
 import dash_bootstrap_components as dbc  # type: ignore
 import flask
 
-CSV = "./used-data.csv"
-CSV_BACKUP = "./used-data-bkp.csv"
+CSV = "./data/used-data.csv"
+CSV_META = "./data/used-data-meta.txt"
+CSV_BACKUP = "./data/used-data-bkp.csv"
+CSV_BACKUP_META = "./data/used-data-bkp-meta.txt"
+
 
 NDIMS = 3
 

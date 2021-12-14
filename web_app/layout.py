@@ -12,7 +12,7 @@ from dash.dependencies import Input, Output, State  # type: ignore
 
 from . import backend
 from . import dash_utils as du
-from .config import CSV, NDIMS, app
+from .config import CSV, CSV_META, NDIMS, app
 
 
 def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
@@ -343,20 +343,22 @@ def count_or_stats(value: str) -> Tuple[bool, int, str]:
         for i in range(NDIMS * 2)
     ]
     + [Output("dropdown-color", "options"), Output("refresh-for-new-csv", "run")],
-    Input("wbs-upload-xlsx", "contents")
+    [Input("wbs-upload-xlsx", "contents"), Input("wbs-upload-xlsx", "filename")]
     # [State("url", "pathname")],
 )
-def upload_csv(contents: str) -> Tuple[Union[List[Dict[str, str]], str]]:
+def upload_csv(contents: str, filename: str) -> Tuple[Union[List[Dict[str, str]], str]]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
     try:
         base64_file = contents.split(",")[1]
         decrypted = base64.b64decode(base64_file).decode("utf-8")
         with open(CSV, "w") as f:
             f.write(decrypted)
+        with open(CSV_META, "w") as f:
+            f.write(filename)
     except IndexError:
         pass
 
-    df = du.get_csv_df()
+    df, _ = du.get_csv_df()
     logging.info(f"Dimensions Available ({len(df.columns)}): {df.columns}")
 
     options = [
@@ -483,7 +485,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     y_to_backend = du.DimControlUtils.to_backend(y_from_dash)
     du.DimControlUtils.log_dims(y_to_backend, "Post-Filtered Selected Y-Dimensions")
 
-    df = du.get_csv_df()
+    df, title = du.get_csv_df()
     hmap = backend.heatmap.Heatmap(
         df,
         [d["name"] for d in x_to_backend],
@@ -504,7 +506,7 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     )
 
     return tuple(
-        [du.DimControlUtils.make_fig(hmap, df)]
+        [du.DimControlUtils.make_fig(hmap, df, title)]
         #
         + [x["name"] for x in x_to_dash]
         + [x["bins"] for x in x_to_dash]  # bin value

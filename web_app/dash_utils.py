@@ -13,7 +13,7 @@ import plotly.graph_objects as go  # type: ignore[import]
 from dash import callback_context, no_update  # type: ignore
 
 from . import backend
-from .config import CSV, CSV_BACKUP
+from .config import CSV, CSV_BACKUP, CSV_BACKUP_META, CSV_META
 
 
 @enum.unique
@@ -50,12 +50,16 @@ def triggered() -> str:
     return cast(str, trig)
 
 
-def get_csv_df() -> pd.DataFrame:
+def get_csv_df() -> Tuple[pd.DataFrame, str]:
     """Read the csv and return the DataFrame."""
     try:
-        return pd.read_csv(CSV, skipinitialspace=True)
+        df = pd.read_csv(CSV, skipinitialspace=True)
+        title = open(CSV_META).readlines()[-1].strip()
     except FileNotFoundError:
-        return pd.read_csv(CSV_BACKUP, skipinitialspace=True)
+        df = pd.read_csv(CSV_BACKUP, skipinitialspace=True)
+        title = open(CSV_BACKUP_META).readlines()[-1].strip()
+
+    return df, title
 
 
 def slider_handle_label(use_bins: bool) -> Dict[str, Any]:
@@ -237,7 +241,9 @@ class DimControlUtils:
             }
 
     @staticmethod
-    def make_fig(hmap: backend.heatmap.Heatmap, df: pd.DataFrame) -> go.Figure:
+    def make_fig(
+        hmap: backend.heatmap.Heatmap, df: pd.DataFrame, title: str
+    ) -> go.Figure:
         """Make go.Figure with the heatmap."""
         xs_bin0 = [d.catbins[0] for d in hmap.x_dims]
         ys_bin0 = [d.catbins[0] for d in hmap.y_dims]
@@ -284,6 +290,7 @@ class DimControlUtils:
             return strings
 
         fig = go.Figure(
+            layout=go.Layout(title=title),
             data=go.Heatmap(
                 z=[[brick["z"] for brick in row] for row in hmap.heatmap],
                 x=[
@@ -300,7 +307,7 @@ class DimControlUtils:
                     ["<br>".join([str(brick["z"])] + stringer(brick)) for brick in row]
                     for row in hmap.heatmap
                 ],
-            )
+            ),
         )
 
         return fig
