@@ -205,6 +205,13 @@ class Intersection:
 # ---------------------------------------------------------------------------------------
 
 
+def super_len(dims: List[Dim]) -> int:
+    num = 1
+    for dim in dims:
+        num *= len(dim.catbins)
+    return num
+
+
 class IntersectionMatrixBuildException(Exception):
     """ "Raise when the IntersectionMatrix cannot be built correctly."""
 
@@ -254,12 +261,6 @@ class IntersectionMatrix:
         """Build out the 2D Intersection matrix."""
         # pylint:disable=invalid-name
         x, y = 0, 0
-
-        def super_len(dims: List[Dim]) -> int:
-            num = 1
-            for dim in dims:
-                num *= len(dim.catbins)
-            return num
 
         x_range, y_range = range(super_len(x_dims)), range(super_len(y_dims))
         matrix: List[List[Intersection]] = [

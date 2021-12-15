@@ -142,14 +142,21 @@ def layout() -> None:
             visdcc.Run_js("refresh-for-new-csv"),  # pylint: disable=E1101
             #
             html.H1("Heatmap Multiplexer", style={"margin-bottom": 0}),
-            daq.BooleanSwitch(  # pylint:disable=not-callable
-                id="use-lines-boolean",
-                on=True,
-                label={
-                    "label": "Display Hierarchy Lines",
-                    "style": {"margin-bottom": 0},
-                },
-                labelPosition="bottom",
+            dbc.Row(
+                justify="end",
+                style={"margin-bottom": "1rem"},
+                children=dbc.Col(
+                    width=2,
+                    children=daq.BooleanSwitch(  # pylint:disable=not-callable
+                        id="use-lines-boolean",
+                        on=True,
+                        label={
+                            "label": "Display Hierarchy Lines",
+                            "style": {"margin-bottom": 0},
+                        },
+                        labelPosition="top",
+                    ),
+                ),
             ),
             dcc.Loading(
                 dcc.Graph(
