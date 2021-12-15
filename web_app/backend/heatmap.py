@@ -4,7 +4,7 @@
 import concurrent.futures
 import logging
 import math
-from typing import Callable, Dict, List, Optional, Tuple, TypedDict
+from typing import Callable, List, Optional, Tuple, TypedDict
 
 import pandas as pd  # type: ignore[import]
 
@@ -41,16 +41,18 @@ class Heatmap:
     def __init__(
         self,
         df: pd.DataFrame,
-        x_dim_names: List[str],
-        y_dim_names: List[str],
+        x_dim_n_bins: List[Tuple[str, int]],
+        y_dim_n_bins: List[Tuple[str, int]],
         z_stat: Optional[ZStat] = None,  # Ex: {'dim_name': 'Score', 'stats_func': min}
-        bins: Optional[Dict[str, int]] = None,
     ) -> None:
-        if not bins:
-            bins = {}
-
-        self.x_dims = [Dim.from_pandas_df(x, df, bins.get(x)) for x in x_dim_names]
-        self.y_dims = [Dim.from_pandas_df(y, df, bins.get(y)) for y in y_dim_names]
+        self.x_dims = [
+            Dim.from_pandas_df(x, df, bins if bins else None)
+            for x, bins in x_dim_n_bins
+        ]
+        self.y_dims = [
+            Dim.from_pandas_df(y, df, bins if bins else None)
+            for y, bins in y_dim_n_bins
+        ]
         matrix = IntersectionMatrix(self.x_dims, self.y_dims)
 
         self.heatmap = self._build(df, matrix, z_stat)

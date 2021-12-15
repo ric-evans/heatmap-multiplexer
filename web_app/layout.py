@@ -46,6 +46,7 @@ def make_dim_control(num_id: int, xy_str: str) -> dbc.Row:
                                 style={
                                     "width": f"{bin_btns_sum_width}rem",
                                     "padding": 0,
+                                    "height": "2.7rem",
                                 },
                                 children=html.Div(
                                     id=f"bin-radios-parent-{xy_str.lower()}-{num_id}",
@@ -399,12 +400,14 @@ def upload_csv(contents: str, filename: str) -> Tuple[Union[List[Dict[str, str]]
     + [Output(f"bin-slider-x-{i}", "disabled") for i in range(NDIMS)]
     + [Output(f"bin-radios-parent-x-{i}", "hidden") for i in range(NDIMS)]
     + [Output(f"bin-slider-x-{i}", "handleLabel") for i in range(NDIMS)]
+    + [Output(f"hide-switch-x-{i}", "on") for i in range(NDIMS)]
     + [Output(f"dropdown-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-radios-y-{i}", "value") for i in range(NDIMS)]
     + [Output(f"bin-slider-y-{i}", "disabled") for i in range(NDIMS)]
     + [Output(f"bin-radios-parent-y-{i}", "hidden") for i in range(NDIMS)]
-    + [Output(f"bin-slider-y-{i}", "handleLabel") for i in range(NDIMS)],
+    + [Output(f"bin-slider-y-{i}", "handleLabel") for i in range(NDIMS)]
+    + [Output(f"hide-switch-y-{i}", "on") for i in range(NDIMS)],
     # Inputs
     [
         Input(f"dropdown-{'x' if i%2==0 else 'y'}-{i//2}", "value")
@@ -508,10 +511,9 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     df, title = du.get_csv_df()
     hmap = backend.heatmap.Heatmap(
         df,
-        [d["name"] for d in x_to_backend],
-        [d["name"] for d in y_to_backend],
+        [(d["name"], d["bins"]) for d in x_to_backend],
+        [(d["name"], d["bins"]) for d in y_to_backend],
         z_stat=du.get_z_stat(z_stat_value, zdim),
-        bins={d["name"]: d["bins"] for d in x_to_backend + y_to_backend if d["bins"]},
     )
 
     # # Transform Heatmap for Front-End # #
@@ -526,29 +528,35 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     )
 
     return tuple(
-        [du.DimControlUtils.make_fig(hmap, df, title, use_lines)]
-        #
+        [du.HeatmapFigureFactory.make_fig(hmap, df, title, use_lines)]
+        # -- X BIN CONTROLS -- #
         + [x["name"] for x in x_to_dash]
         + [x["bins"] for x in x_to_dash]  # bin value
         + [x["bin_radio"] for x in x_to_dash]
-        + [not x["is_numerical"] for x in x_to_dash]  # bin disabled
-        + [not x["is_numerical"] for x in x_to_dash]  # bin radio hidden
+        # slider disabled?
+        + [not x["is_numerical"] or not x["on"] or not x["name"] for x in x_to_dash]
+        # bin radios hidden?
+        + [not x["is_numerical"] or not x["on"] or not x["name"] for x in x_to_dash]
         + [
             du.slider_handle_label(
                 x["is_numerical"], x["bin_radio"] == du.BinRadioOptions.TENPOW.value
             )
             for x in x_to_dash
         ]
-        #
+        + [x["on"] for x in x_to_dash]  # bin bool switch
+        # -- Y BIN CONTROLS -- #
         + [y["name"] for y in y_to_dash]
         + [y["bins"] for y in y_to_dash]  # bin value
         + [y["bin_radio"] for y in y_to_dash]
-        + [not y["is_numerical"] for y in y_to_dash]  # bin disabled
-        + [not y["is_numerical"] for y in y_to_dash]  # bin radio hidden
+        # slider disabled?
+        + [not y["is_numerical"] or not y["on"] or not y["name"] for y in y_to_dash]
+        # bin radios hidden?
+        + [not y["is_numerical"] or not y["on"] or not y["name"] for y in y_to_dash]
         + [
             du.slider_handle_label(
                 y["is_numerical"], y["bin_radio"] == du.BinRadioOptions.TENPOW.value
             )
             for y in y_to_dash
         ]
+        + [y["on"] for y in y_to_dash]  # bin bool switch
     )

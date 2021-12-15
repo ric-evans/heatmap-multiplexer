@@ -17,6 +17,9 @@ from .config import CSV, CSV_BACKUP, CSV_BACKUP_META, CSV_META
 
 ITS_A_FILLER_NAME_HACK = "<IT'S-A-FILLER>"
 
+DOT_WIDTH = 3
+SOLID_LINE_WIDTH = 3
+
 
 @enum.unique
 class StatsRadioOptions(enum.Enum):
@@ -104,7 +107,8 @@ class DimControls(TypedDict):
 
     name: str
     on: bool
-    bins: int
+    original_bins: int
+    bins: int  # bins after tweaking per radio option
     is_numerical: bool
     bin_radio: int
 
@@ -174,6 +178,7 @@ class DimControlUtils:
                     "name": zipped[0],
                     "on": zipped[1],
                     "bins": bins_val,
+                    "original_bins": zipped[2],
                     "is_numerical": not zipped[3],
                     "bin_radio": radio_val,
                 }
@@ -221,6 +226,7 @@ class DimControlUtils:
                         "name": dim_ctrl["name"],
                         "on": True,  # reset empty dim to on
                         "bins": 0,  # reset empty dim to 0
+                        "original_bins": dim_ctrl["original_bins"],
                         "is_numerical": dim_ctrl["is_numerical"],
                         "bin_radio": dim_ctrl["bin_radio"],
                     }
@@ -228,7 +234,8 @@ class DimControlUtils:
                     yield {
                         "name": dim_ctrl["name"],
                         "on": dim_ctrl["on"],
-                        "bins": dim_ctrl["bins"],
+                        "bins": dim_ctrl["original_bins"],  # no want 0 or -1 b/c radio
+                        "original_bins": dim_ctrl["original_bins"],
                         "is_numerical": dim_ctrl["is_numerical"],
                         "bin_radio": dim_ctrl["bin_radio"],
                     }
@@ -244,9 +251,14 @@ class DimControlUtils:
                 "on": dim_ctrl["on"],
                 # always return bins b/c might be overridden
                 "bins": len(dim_heatmap[i].catbins),
+                "original_bins": dim_ctrl["original_bins"],
                 "is_numerical": dim_heatmap[i].is_numerical,
                 "bin_radio": dim_ctrl["bin_radio"],
             }
+
+
+class HeatmapFigureFactory:
+    """Static factory class for building the Dash Heatmap."""
 
     @staticmethod
     def make_fig(
@@ -258,9 +270,9 @@ class DimControlUtils:
         x_fillers: List[str] = []
         y_fillers: List[str] = []
         if add_lines:
-            hmap.heatmap, x_fillers, y_fillers = HeatmapFigureFactory.add_fillers(hmap)
+            hmap.heatmap, x_fillers, y_fillers = HeatmapFigureFactory._add_fillers(hmap)
 
-        x_tix, y_tix, z_data, z_text = HeatmapFigureFactory.format_xyz(
+        x_tix, y_tix, z_data, z_text = HeatmapFigureFactory._format_xyz(
             {
                 "df": df,
                 "yxs_bin0": [d.catbins[0] for d in hmap.y_dims + hmap.x_dims],
@@ -294,8 +306,8 @@ class DimControlUtils:
                 # type="linear",  # may be unnecessary -> plotly auto-detects
                 title={"text": title_text},
                 # showgrid=True, # True by default
-                tickmode="linear",  # puts ticks/labels/grid-lines on every axis val
-                ticklabeloverflow="allow",  # put label even if it overlaps stuff
+                # tickmode="linear",  # puts ticks/labels/grid-lines on every axis val
+                # ticklabeloverflow="allow",  # put label even if it overlaps stuff
                 ticklen=50,  # px length of tick line
                 ticks="outside",  # draw tick outside of axis
                 tickson="boundaries",  # draw ticks/grid-lines between blocks
@@ -312,32 +324,27 @@ class DimControlUtils:
 
         # Add dots to empty bricks
         fig.add_trace(
-            HeatmapFigureFactory.add_non_dots(hmap, add_lines, z_data, x_tix, y_tix)
+            HeatmapFigureFactory._add_non_dots(hmap, add_lines, z_data, x_tix, y_tix)
         )
 
         # Add the reference lines
         if add_lines:
-            for trace in HeatmapFigureFactory.add_reference_lines(
+            for trace in HeatmapFigureFactory._add_reference_lines(
                 hmap, x_tix, y_tix, x_fillers, y_fillers
             ):
                 fig.add_trace(trace)
 
         return fig
 
+    class DataSetCache(TypedDict):
+        """A local store for commonly accessed dataset things."""
 
-class DataSetCache(TypedDict):
-    """A local store for commonly accessed dataset things."""
-
-    df: pd.DataFrame
-    yxs_bin0: List[backend.dimensions.CatBin]
-    yxs_10powdisc: List[bool]
-
-
-class HeatmapFigureFactory:
-    """Helper static factory class for building the Dash Heatmap."""
+        df: pd.DataFrame
+        yxs_bin0: List[backend.dimensions.CatBin]
+        yxs_10powdisc: List[bool]
 
     @staticmethod
-    def add_fillers(
+    def _add_fillers(
         hmap: backend.heatmap.Heatmap,
     ) -> Tuple[List[List[backend.heatmap.HeatBrick]], List[str], List[str]]:
         """Add the filler bricks to separate the data hierarchically."""
@@ -400,7 +407,7 @@ class HeatmapFigureFactory:
         return with_xy_fillers, x_fillers, y_fillers
 
     @staticmethod
-    def format_xyz(
+    def _format_xyz(
         datacache: DataSetCache,
         hmap: backend.heatmap.Heatmap,
         add_lines: bool,
@@ -422,14 +429,16 @@ class HeatmapFigureFactory:
             col["intersection"][0]["catbin"]  # HACK: unique simple labels
             if col["intersection"]
             and col["intersection"][0]["name"] == ITS_A_FILLER_NAME_HACK
-            else join(HeatmapFigureFactory.stringer(datacache, col, "x", short=True))
+            else join(HeatmapFigureFactory._stringer(datacache, col, "x", short=True))
             for col in hmap.heatmap[0]
         ]
         y_tix = [
             row[0]["intersection"][0]["catbin"]  # HACK: unique simple labels
             if row[0]["intersection"]
             and row[0]["intersection"][0]["name"] == ITS_A_FILLER_NAME_HACK
-            else join(HeatmapFigureFactory.stringer(datacache, row[0], "y", short=True))
+            else join(
+                HeatmapFigureFactory._stringer(datacache, row[0], "y", short=True)
+            )
             for row in hmap.heatmap
         ]
         if add_lines:
@@ -458,7 +467,7 @@ class HeatmapFigureFactory:
                 [
                     "<br>".join(
                         [str(brick["z"])]
-                        + HeatmapFigureFactory.stringer(datacache, brick)
+                        + HeatmapFigureFactory._stringer(datacache, brick)
                     )
                     if brick["intersection"]
                     and brick["intersection"][0]["name"] != ITS_A_FILLER_NAME_HACK
@@ -475,7 +484,7 @@ class HeatmapFigureFactory:
                 [
                     "<br>".join(
                         [str(brick["z"])]
-                        + HeatmapFigureFactory.stringer(datacache, brick)
+                        + HeatmapFigureFactory._stringer(datacache, brick)
                     )
                     for brick in row
                 ]
@@ -484,7 +493,7 @@ class HeatmapFigureFactory:
         return x_tix, y_tix, z_data, z_text
 
     @staticmethod
-    def stringer(
+    def _stringer(
         datacache: DataSetCache,
         brick: backend.heatmap.HeatBrick,
         only: str = "",
@@ -511,8 +520,10 @@ class HeatmapFigureFactory:
                 r_brac = "]" if hb_inter["catbin"].closed_right else ")"
                 right = hb_inter["catbin"].right
 
-                if tenpowdisc:  # is this a 10^N and discrete value?
-                    strings.append(f"{hb_inter['name']}:{left}")
+                if tenpowdisc and short:
+                    strings.append(f"{left}")
+                elif tenpowdisc:  # is this a 10^N and discrete value?
+                    strings.append(f"{hb_inter['name']}: {left}")
                 elif short:  # short format
                     if l_brac == "[" and r_brac == ")":
                         strings.append(f"{left}+")
@@ -531,7 +542,7 @@ class HeatmapFigureFactory:
         return strings
 
     @staticmethod
-    def add_non_dots(
+    def _add_non_dots(
         hmap: backend.heatmap.Heatmap,
         add_lines: bool,
         z_data: List[List[Optional[float]]],
@@ -563,12 +574,12 @@ class HeatmapFigureFactory:
             y=[n[1] for n in none_dots],
             showlegend=False,
             mode="markers",
-            marker=dict(color="black", size=5),
+            marker=dict(color="black", size=DOT_WIDTH),
             hoverinfo="skip",  # just do whatever heatmap does
         )
 
     @staticmethod
-    def add_reference_lines(
+    def _add_reference_lines(
         hmap: backend.heatmap.Heatmap,
         x_tix: List[str],
         y_tix: List[str],
@@ -590,7 +601,7 @@ class HeatmapFigureFactory:
                         y_tix[-1],
                     ],
                     mode="lines",
-                    line=go.scatter.Line(color="black", width=5),
+                    line=go.scatter.Line(color="black", width=SOLID_LINE_WIDTH),
                     showlegend=False,
                     hoverinfo="none",
                 )
@@ -607,7 +618,7 @@ class HeatmapFigureFactory:
                         y_coord,
                     ],
                     mode="lines",
-                    line=go.scatter.Line(color="black", width=5),
+                    line=go.scatter.Line(color="black", width=SOLID_LINE_WIDTH),
                     showlegend=False,
                     hoverinfo="none",
                 )
@@ -618,11 +629,11 @@ class HeatmapFigureFactory:
                 # this check isn't necessary since x_fillers only for 2+ dims
                 break
             elif len(hmap.x_dims) == 2:
-                width, dash = 5, "solid"
+                width, dash = SOLID_LINE_WIDTH, "solid"
             else:  # 3+ dims
-                width, dash = 2, "dash"
+                width, dash = SOLID_LINE_WIDTH / 2, "dash"
                 if i % len(hmap.x_dims[-2].catbins) == 0:
-                    width, dash = 5, "solid"
+                    width, dash = SOLID_LINE_WIDTH, "solid"
             traces.append(
                 go.Scatter(
                     x=[
@@ -644,11 +655,11 @@ class HeatmapFigureFactory:
                 # this check isn't necessary since y_fillers only for 2+ dims
                 break
             elif len(hmap.y_dims) == 2:
-                width, dash = 5, "solid"
+                width, dash = SOLID_LINE_WIDTH, "solid"
             else:  # 3+ dims
-                width, dash = 2, "dash"
+                width, dash = SOLID_LINE_WIDTH / 2, "dash"
                 if i % len(hmap.y_dims[-2].catbins) == 0:
-                    width, dash = 5, "solid"
+                    width, dash = SOLID_LINE_WIDTH, "solid"
             traces.append(
                 go.Scatter(
                     x=[
