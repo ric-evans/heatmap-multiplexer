@@ -1,9 +1,10 @@
 """Handle Heatmap building."""
 
 
+import concurrent.futures
+import logging
 import math
-from copy import deepcopy
-from typing import Callable, Dict, List, Optional, TypedDict
+from typing import Callable, Dict, List, Optional, Tuple, TypedDict
 
 import pandas as pd  # type: ignore[import]
 
@@ -60,11 +61,12 @@ class Heatmap:
     ) -> List[List[HeatBrick]]:
         """Build out the 2D heatmap."""
         # pylint:disable=invalid-name
+        logging.info("Building Heatmap...")
 
         def brick_it(inter: Intersection) -> HeatBrick:
-            temp = deepcopy(df)
+            temp = df
             for dimselect in inter.dimselections:
-                temp = temp.query(dimselect.get_pandas_query())
+                temp = temp.query(dimselect.get_pandas_query(), inplace=False)
 
             z = None
             if z_stat:
@@ -87,7 +89,25 @@ class Heatmap:
                 ],
             }
 
-        return [
-            [brick_it(x_inter) for x_inter in matrix.matrix[y]]
-            for y in range(len(matrix.matrix))
-        ]
+        def do_row(
+            matrix_row: List[Intersection], i: int
+        ) -> Tuple[int, List[HeatBrick]]:
+            return i, [brick_it(x_inter) for x_inter in matrix_row]
+
+        if len(matrix.matrix) >= 64 or len(matrix.matrix[0]) >= 64:
+            base: List[List[HeatBrick]] = [[] for y in range(len(matrix.matrix))]
+            file_workers: List[concurrent.futures.Future] = []  # type: ignore[type-arg]
+            # spawn
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                for i, matrix_row in enumerate(matrix.matrix):
+                    file_workers.append(pool.submit(do_row, matrix_row, i))
+            # retrieve
+            for worker in concurrent.futures.as_completed(file_workers):
+                i, row = worker.result()
+                base[i] = row
+            return base
+        else:
+            return [
+                [brick_it(x_inter) for x_inter in matrix.matrix[y]]
+                for y in range(len(matrix.matrix))
+            ]
