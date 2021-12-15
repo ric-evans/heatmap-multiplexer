@@ -347,9 +347,9 @@ def layout() -> None:
 def count_or_stats(value: str) -> Tuple[bool, int, str]:
     """Toggle the count-or-stats radio button & collapse box."""
     if value == du.StatsRadioOptions.COUNT.value:
-        return False, du.StatsRadioOptions.NO_RADIO_SELECT.value, ""
+        return False, du.StatsRadioOptions.NO_RADIO_SELECT.value, du.no_update
     elif value == du.StatsRadioOptions.STATS.value:
-        return True, du.StatsRadioOptions.NO_RADIO_SELECT.value, ""
+        return True, du.no_update, du.no_update
     else:
         raise ValueError(f"Unrecognized value: {value}")
 
@@ -383,13 +383,22 @@ def upload_csv(contents: str, filename: str) -> Tuple[Union[List[Dict[str, str]]
             "label": dim,
             "value": dim,
         }
-        for dim in df.columns
+        for dim in sorted(df.columns)
+    ]
+
+    numerical_options = [
+        {
+            "label": dim,
+            "value": dim,
+        }
+        for dim in sorted(df.columns)
+        if backend.dimensions.analyze_data_type(df[dim].to_list())[1]
     ]
 
     if du.triggered() == "wbs-upload-xlsx.contents":
         return tuple([du.no_update] * ((NDIMS * 2) + 1) + ["location.reload();"])  # type: ignore[return-value]
     else:
-        return tuple([options] * ((NDIMS * 2) + 1) + [du.no_update])  # type: ignore[return-value]
+        return tuple([options] * (NDIMS * 2) + [numerical_options, du.no_update])  # type: ignore[return-value]
 
 
 @app.callback(  # type: ignore[misc]
@@ -439,7 +448,8 @@ def upload_csv(contents: str, filename: str) -> Tuple[Union[List[Dict[str, str]]
     [
         State(f"bin-slider-{'x' if i%2==0 else 'y'}-{i//2}", "disabled")
         for i in range(NDIMS * 2)
-    ],
+    ]
+    + [State("color-collapse", "is_open")],
 )
 def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     """Serve up the heatmap wrapped in a go.Figure instance."""
@@ -478,6 +488,16 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
     # disabled bins
     xy_disabled_bins: List[bool] = args[: NDIMS * 2]  # type: ignore[assignment]
     args = args[NDIMS * 2 :]
+    stats_open: bool = args.pop(0)  # type: ignore[assignment]
+
+    # # ABORT CHECK # #
+    if stats_open:
+        # if the user hasn't finished selecting all the stats stuff, abort
+        if (
+            du.triggered() == "dropdown-color.value"
+            and z_stat_value == du.StatsRadioOptions.NO_RADIO_SELECT.value
+        ) or (du.triggered() == "color-stats-select-radios.value" and not zdim):
+            return tuple([du.no_update] * 43)  # NOTE: needs updating if NDIMS changes
 
     # # Aggregate # #
 

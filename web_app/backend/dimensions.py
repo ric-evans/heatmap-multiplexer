@@ -4,12 +4,27 @@
 import logging
 import math
 from copy import deepcopy
-from typing import Any, List, Optional, TypedDict, Union
+from typing import Any, List, Optional, Tuple, TypedDict, Union
 
 import numpy as np  # type: ignore[import]
 import pandas as pd  # type: ignore[import]
 
 CatBin = Union[str, pd.Interval]
+
+
+def analyze_data_type(data_list: List[Any]) -> Tuple[List[Any], bool]:
+    """Look at the data, remove any null-like values, sort, and tell if it's numerical."""
+
+    def is_nullish(val: Any) -> bool:
+        if isinstance(val, str):
+            return not bool(val) or str.isspace(val)
+        if isinstance(val, float):
+            return math.isnan(val)
+        return False
+
+    uniques = sorted({e for e in data_list if not is_nullish(e)})
+    is_numerical = isinstance(uniques[0], (float, int))  # sorted, so only need first
+    return uniques, is_numerical
 
 
 class Dim:
@@ -54,13 +69,6 @@ class Dim:
         All intervals are left-inclusive: [a,b)
         """
         is_10pow = False
-
-        def is_nullish(val: Any) -> bool:
-            if isinstance(val, str):
-                return not bool(val) or str.isspace(val)
-            if isinstance(val, float):
-                return math.isnan(val)
-            return False
 
         def sturges_rule() -> int:
             """Use Sturges’ Rule, calculated by cardinality of set."""
@@ -118,9 +126,9 @@ class Dim:
             )
 
         # get a sorted unique list w/o nan values
-        unique_values = sorted({e for e in df[name].tolist() if not is_nullish(e)})
+        unique_values, is_numerical = analyze_data_type(df[name].tolist())
         # Numerical
-        if isinstance(unique_values[0], (float, int)):
+        if is_numerical:
             # use default # of bins
             if not num_bins:
                 catbins = get_cut(sturges_rule())
