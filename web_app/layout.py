@@ -533,12 +533,22 @@ def make_heatmap(*args_tuple: Union[str, bool, int, None]) -> Tuple[Any, ...]:
         + [x["bin_radio"] for x in x_to_dash]
         + [not x["is_numerical"] for x in x_to_dash]  # bin disabled
         + [not x["is_numerical"] for x in x_to_dash]  # bin radio hidden
-        + [du.slider_handle_label(x["is_numerical"]) for x in x_to_dash]
+        + [
+            du.slider_handle_label(
+                x["is_numerical"], x["bin_radio"] == du.BinRadioOptions.TENPOW.value
+            )
+            for x in x_to_dash
+        ]
         #
         + [y["name"] for y in y_to_dash]
         + [y["bins"] for y in y_to_dash]  # bin value
         + [y["bin_radio"] for y in y_to_dash]
         + [not y["is_numerical"] for y in y_to_dash]  # bin disabled
         + [not y["is_numerical"] for y in y_to_dash]  # bin radio hidden
-        + [du.slider_handle_label(y["is_numerical"]) for y in y_to_dash]
+        + [
+            du.slider_handle_label(
+                y["is_numerical"], y["bin_radio"] == du.BinRadioOptions.TENPOW.value
+            )
+            for y in y_to_dash
+        ]
     )

@@ -64,11 +64,17 @@ def get_csv_df() -> Tuple[pd.DataFrame, str]:
     return df, title
 
 
-def slider_handle_label(use_bins: bool) -> Dict[str, Any]:
+def slider_handle_label(use_bins: bool, is_ten_pow: bool = False) -> Dict[str, Any]:
     """Get the slider handle label dict."""
+    if is_ten_pow:
+        label = "SMART BINS"
+    elif use_bins:
+        label = "BINS"
+    else:
+        label = "CATEGORIES"
     return {
         "showCurrentValue": True,
-        "label": "BINS" if use_bins else "CATEGORIES",
+        "label": label,
         "style": {"width": "6rem"},
     }
 
