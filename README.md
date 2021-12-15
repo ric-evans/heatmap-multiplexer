@@ -2,7 +2,7 @@
 A Web App for Building and Interacting with Multi-Variate Heatmaps
 
 
-## Startup Directions
+## Getting Started
 
 ### 1. Set Up Environment
     python3.8 -m virtualenv -p python3.8 env-heatmulti-web
