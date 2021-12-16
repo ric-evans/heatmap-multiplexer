@@ -32,10 +32,10 @@ Go to http://localhost:8050/
     - for nice looking logs :)
 
 ## User Instructions
-The app is designed to be extremely interactive. A dataset is preloaded describing the 2001-2015 NBA Drafts. Choose X and Y Dimensions however you'd like, along with any additional binning settings. Everything will load automatically--there is no "compile" button. Naturally, the higher the number of dimensions the longer it will take to process. Toggling the visibility switches will allow you to exclude dimensions without losing your binning settings. The heatmap has out-of-the-box interactions like zooming and tooltips.
+The app is designed to be extremely interactive. A dataset is preloaded describing the 2001-2015 NBA Drafts. Choose X and Y Dimensions however you'd like, along with any additional binning settings. Everything will load in real time--there is no "compile" button. Naturally, the higher the number of dimensions (and data points) the longer it will take to process. Toggling the visibility switches will allow you to exclude dimensions without losing your binning settings. Using the up/down buttons will render different hierarchies within the heatmap. The heatmap has out-of-the-box interactions like zooming and tooltips.
 
 ### Example Configurations
-_A single example will produce several examples because each step is rendered in real-time._
+_A single example will produce several examples because each step is rendered in real time._
 
 #### `nba-draft-2015.csv` (preloaded)
 ##### Y Dimensions
