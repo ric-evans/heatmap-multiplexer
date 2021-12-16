@@ -30,3 +30,19 @@ Go to http://localhost:8050/
     - additional JavaScript wrapping library
 - coloredlogs (v. 15.0.1)
     - for nice looking logs :)
+
+## User Instructions
+The app is designed to be extremely interactive. A dataset is preloaded describing the 2001-2015 NBA Drafts. Choose X and Y Dimensions however you'd like, along with any additional binning settings. Everything will load automatically--there is no "compile" button. Naturally, the higher the number of dimensions the longer it will take to process. Toggling the visibility switches will allow you to exclude dimensions without losing your binning settings. The heatmap has out-of-the-box interactions like zooming and tooltips.
+
+### Example Configurations
+
+#### `nba-draft-2015.csv` (preloaded)
+##### Y Dimensions
+- _Draft_year_ (with default 15 "smart bins")
+##### X Dimensions
+- _Position_ (categorical)
+- _Bust_ (with default 8 "smart bins")
+#### Data Coloring
+- Dimensional Statistic
+    - _Role Player_
+    - Median
