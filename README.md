@@ -16,8 +16,10 @@ A Web App for Building and Interacting with Multi-Variate Heatmaps
 Go to http://localhost:8050/
 
 ## Libraries and Tools Used
-*(These are also included in the `requirements.txt`)*
+This was built and tested with Python 3.8.
 
+### Requirements
+*(These are also included in the `requirements.txt`)*
 - dash (v. 2.0.0)
     - plotly is a dependency
 - dash-bootstrap-components (v. 1.0.1)
