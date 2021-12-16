@@ -39,13 +39,13 @@ The app is designed to be extremely interactive. A dataset is preloaded describi
 ### Example Configurations
 _A single example will produce several examples because each step is rendered in real time._
 
-#### `nba-draft-2015.csv` (preloaded)
+#### Dataset: `nba-draft-2015.csv` (preloaded)
 ##### Y Dimensions
 1. _Draft_year_ (with default 15 "smart bins")
 ##### X Dimensions
 1. _Position_ (this is categorical)
 2. _Bust_ (with default 8 "smart bins")
-#### Data Coloring
+##### Data Coloring
 - Dimensional Statistic
     - _Role Player_
     - Median
