@@ -14,3 +14,19 @@ A Web App for Building and Interacting with Multi-Variate Heatmaps
 
 ### 3. View Webpage
 Go to http://localhost:8050/
+
+## Libraries and Tools Used
+*(These are also included in the `requirements.txt`)*
+
+- dash (v. 2.0.0)
+    - plotly is a dependency
+- dash-bootstrap-components (v. 1.0.1)
+    - supplementary dash library
+- dash-daq (v. 0.5.0)
+    - supplementary dash library
+- pandas (v. 1.3.4)
+    - stats library
+- visdcc (v. 0.0.40)
+    - additional JavaScript wrapping library
+- coloredlogs (v. 15.0.1)
+    - for nice looking logs :)
